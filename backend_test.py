@@ -143,6 +143,8 @@ class SyroceCRMTester:
         else:
             self.log_test("Image Upload", False, error=f"Status {status}: {error}")
             return None
+
+    def test_dashboard_stats(self):
         """Test dashboard statistics endpoint"""
         success, data, status, error = self.test_api_request('GET', 'dashboard/stats')
         
