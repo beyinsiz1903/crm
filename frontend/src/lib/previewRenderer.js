@@ -181,7 +181,7 @@ function renderSection(section, theme, t) {
     case "footer": {
       const social = props.socialLinks || {};
       const socialHtml = Object.entries(social).map(([platform, link]) => `<a href="${link}" title="${platform}">${platform[0].toUpperCase()}</a>`).join("");
-      return `<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>${props.hotelName || "Hotel"}</h3><p>${props.address || ""}</p><div class="footer-social">${socialHtml}</div></div><div><h3>Hizli Erisim</h3><p><a href="#anasayfa">Anasayfa</a></p><p><a href="#odalar">Odalar</a></p><p><a href="#galeri">Galeri</a></p><p><a href="#iletisim">Iletisim</a></p></div><div><h3>Iletisim</h3><p>${props.phone || ""}</p><p>${props.email || ""}</p></div></div><div class="footer-bottom"><p>&copy; 2025 ${props.hotelName || "Hotel"}. Tum haklari saklidir.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">Powered by <span>Syroce</span></a></div></div></footer>`;
+      return `<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>${props.hotelName || "Hotel"}</h3><p>${props.address || ""}</p><div class="footer-social">${socialHtml}</div></div><div><h3>${t.quick_links}</h3><p><a href="#anasayfa">${t.home}</a></p><p><a href="#odalar">${t.rooms}</a></p><p><a href="#galeri">${t.gallery}</a></p><p><a href="#iletisim">${t.contact}</a></p></div><div><h3>${t.contact}</h3><p>${props.phone || ""}</p><p>${props.email || ""}</p></div></div><div class="footer-bottom"><p>&copy; 2025 ${props.hotelName || "Hotel"}. ${t.all_rights}.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">${t.powered_by} <span>Syroce</span></a></div></div></footer>`;
     }
     default:
       return "";
