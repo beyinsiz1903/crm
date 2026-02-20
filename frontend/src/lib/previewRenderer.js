@@ -188,7 +188,27 @@ function renderSection(section, theme) {
   }
 }
 
-export function generatePreviewHTML(sections, theme) {
+const TRANSLATIONS = {
+  tr: {
+    home: "Anasayfa", about: "Hakkimizda", rooms: "Odalar", gallery: "Galeri",
+    services: "Hizmetler", contact: "Iletisim", testimonials: "Yorumlar",
+    your_name: "Adiniz Soyadiniz", your_email: "E-posta Adresiniz",
+    subject: "Konu", message: "Mesajiniz", send: "Gonder",
+    quick_links: "Hizli Erisim", contact_info: "Iletisim Bilgileri",
+    all_rights: "Tum haklari saklidir", powered_by: "Powered by",
+  },
+  en: {
+    home: "Home", about: "About", rooms: "Rooms", gallery: "Gallery",
+    services: "Services", contact: "Contact", testimonials: "Testimonials",
+    your_name: "Your Name", your_email: "Your Email",
+    subject: "Subject", message: "Your Message", send: "Send",
+    quick_links: "Quick Links", contact_info: "Contact Information",
+    all_rights: "All rights reserved", powered_by: "Powered by",
+  },
+};
+
+export function generatePreviewHTML(sections, theme, lang = "tr") {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.tr;
   const hf = theme.headerFont || "Playfair Display";
   const bf = theme.bodyFont || "Lato";
   const fontFamilies = new Set();
