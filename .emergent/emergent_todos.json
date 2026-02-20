@@ -1,38 +1,38 @@
 [
   {
     "content": "Phase 3: Multi-page export support (single/multi page)",
-    "status": "in_progress"
+    "status": "completed"
   },
   {
     "content": "Phase 3: Image upload system",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 3: SEO panel in editor",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 3: Template cloning from project",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 3: English language support for generated websites",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Versioning (snapshots + restore)",
-    "status": "pending"
+    "status": "completed"
   },
   {
     "content": "Phase 4: Auth (JWT login)",
-    "status": "pending"
+    "status": "completed"
   },
   {
-    "content": "Phase 4: Performance optimization",
-    "status": "pending"
+    "content": "Phase 4: Performance optimization (debounce autosave)",
+    "status": "completed"
   },
   {
     "content": "Phase 3+4: End to End Testing",
-    "status": "pending"
+    "status": "in_progress"
   }
 ]
