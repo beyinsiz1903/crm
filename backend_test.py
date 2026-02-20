@@ -35,18 +35,30 @@ class SyroceCRMTester:
             print(f"    → Error: {error}")
         print()
 
-    def test_api_request(self, method, endpoint, data=None, expected_status=200):
+    def test_api_request(self, method, endpoint, data=None, expected_status=200, files=None):
         """Make API request and validate response"""
         url = f"{self.base_url}/{endpoint}"
         try:
+            # Set authorization header if token exists
+            headers = {'Content-Type': 'application/json'}
+            if self.token:
+                headers['Authorization'] = f'Bearer {self.token}'
+                
+            if files:
+                # For file uploads, don't set Content-Type (let requests set it)
+                headers.pop('Content-Type', None)
+            
             if method == 'GET':
-                response = self.session.get(url)
+                response = requests.get(url, headers=headers)
             elif method == 'POST':
-                response = self.session.post(url, json=data)
+                if files:
+                    response = requests.post(url, files=files, headers=headers)
+                else:
+                    response = requests.post(url, json=data, headers=headers)
             elif method == 'PUT':
-                response = self.session.put(url, json=data)
+                response = requests.put(url, json=data, headers=headers)
             elif method == 'DELETE':
-                response = self.session.delete(url)
+                response = requests.delete(url, headers=headers)
             
             success = response.status_code == expected_status
             response_data = None
@@ -55,7 +67,10 @@ class SyroceCRMTester:
                 try:
                     response_data = response.json()
                 except:
-                    response_data = response.text[:100] if response.text else "No content"
+                    if response.headers.get('content-type', '').startswith('application/zip'):
+                        response_data = "ZIP_FILE_CONTENT"
+                    else:
+                        response_data = response.text[:100] if response.text else "No content"
             
             return success, response_data, response.status_code, response.text
             
