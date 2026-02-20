@@ -77,7 +77,72 @@ class SyroceCRMTester:
         except Exception as e:
             return False, None, None, str(e)
 
-    def test_dashboard_stats(self):
+    def test_auth_flow(self):
+        """Test JWT authentication flow - Phase 3+4 feature"""
+        
+        # Test auth check - should return has_users: true
+        success, data, status, error = self.test_api_request('GET', 'auth/check')
+        if success and data.get('has_users') == True:
+            self.log_test("Auth Check - has_users", True, f"has_users: {data['has_users']}")
+        else:
+            self.log_test("Auth Check - has_users", False, error=f"Expected has_users: true, got {data}")
+            
+        # Test user registration first (in case admin doesn't exist)
+        register_data = {
+            "email": "admin@syroce.com",
+            "password": "admin123",
+            "name": "Admin User"
+        }
+        
+        success, reg_result, status, error = self.test_api_request('POST', 'auth/register', register_data)
+        if success:
+            self.log_test("Auth Register", True, f"Registered user: {reg_result.get('user', {}).get('email')}")
+            if reg_result.get('token'):
+                self.token = reg_result['token']
+        elif status == 400:  # User already exists
+            self.log_test("Auth Register", True, "User already exists (expected)")
+        else:
+            self.log_test("Auth Register", False, error=f"Status {status}: {error}")
+            
+        # Test login with admin credentials 
+        login_data = {
+            "email": "admin@syroce.com", 
+            "password": "admin123"
+        }
+        
+        success, login_result, status, error = self.test_api_request('POST', 'auth/login', login_data)
+        if success and login_result.get('token'):
+            self.token = login_result['token']
+            self.log_test("Auth Login", True, f"Logged in user: {login_result.get('user', {}).get('email')}")
+            
+            # Test auth/me endpoint with token
+            success, user_data, status, error = self.test_api_request('GET', 'auth/me')
+            if success:
+                self.log_test("Auth Me", True, f"User ID: {user_data.get('id')}")
+            else:
+                self.log_test("Auth Me", False, error=f"Status {status}: {error}")
+                
+        else:
+            self.log_test("Auth Login", False, error=f"Status {status}: {error}")
+            return False
+            
+        return True
+
+    def test_image_upload(self):
+        """Test image upload endpoint - Phase 3+4 feature"""
+        
+        # Create a small test image file in memory
+        test_image = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
+        
+        files = {'file': ('test.png', io.BytesIO(test_image), 'image/png')}
+        
+        success, upload_result, status, error = self.test_api_request('POST', 'upload', files=files)
+        if success and upload_result.get('url'):
+            self.log_test("Image Upload", True, f"Uploaded to: {upload_result['url']}")
+            return upload_result['url']
+        else:
+            self.log_test("Image Upload", False, error=f"Status {status}: {error}")
+            return None
         """Test dashboard statistics endpoint"""
         success, data, status, error = self.test_api_request('GET', 'dashboard/stats')
         
