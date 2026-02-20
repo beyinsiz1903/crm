@@ -12,33 +12,31 @@ import { checkAuth, getMe } from "@/lib/api";
 
 function AuthWrapper({ children }) {
   const [authState, setAuthState] = useState("loading"); // loading, needs_setup, needs_login, authenticated
-  const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
     const init = async () => {
       try {
-        const { has_users } = await checkAuth();
-        if (!has_users) {
-          setAuthState("needs_setup");
-          return;
-        }
         const token = localStorage.getItem("syroce_token");
-        if (!token) {
-          setAuthState("needs_login");
-          return;
+        if (token) {
+          try {
+            await getMe();
+            if (mounted) setAuthState("authenticated");
+            return;
+          } catch {
+            localStorage.removeItem("syroce_token");
+          }
         }
-        try {
-          await getMe();
-          setAuthState("authenticated");
-        } catch {
-          localStorage.removeItem("syroce_token");
-          setAuthState("needs_login");
+        const { has_users } = await checkAuth();
+        if (mounted) {
+          setAuthState(has_users ? "needs_login" : "needs_setup");
         }
       } catch {
-        setAuthState("authenticated"); // If auth check fails, allow access
+        if (mounted) setAuthState("authenticated"); // If auth check fails, allow access
       }
     };
     init();
+    return () => { mounted = false; };
   }, []);
 
   if (authState === "loading") {
