@@ -159,7 +159,7 @@ def render_header(props, theme, lang="tr", nav_links=None):
         menu_html = "".join([f'<a href="{link}">{label}</a>' for label, link in nav_links])
     else:
         menu_items = props.get("menuItems", [])
-        menu_html = "".join([f'<a href="#{item.lower().replace(\" \", \"-\")}">{item}</a>' for item in menu_items])
+        menu_html = "".join(['<a href="#' + item.lower().replace(" ", "-") + '">' + item + '</a>' for item in menu_items])
     style = props.get("style", "transparent")
     return f'<header class="site-header {style}"><div class="nav-inner"><div class="logo">{hotel_name}</div><nav>{menu_html}</nav></div></header>'
 
