@@ -119,7 +119,7 @@ function generateCSS(theme) {
   `;
 }
 
-function renderSection(section, theme) {
+function renderSection(section, theme, t) {
   const props = section.props || {};
   const type = section.type;
   const pc = theme.primaryColor || "#C5A572";
