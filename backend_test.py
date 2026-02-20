@@ -470,10 +470,18 @@ class SyroceCRMTester:
                 print(f"    Deleted client: {client_id}")
             else:
                 print(f"    Failed to delete client: {client_id}")
+                
+        # Delete created templates
+        for template_id in self.created_resources['templates']:
+            success, _, status, _ = self.test_api_request('DELETE', f'templates/{template_id}')
+            if success:
+                print(f"    Deleted template: {template_id}")
+            else:
+                print(f"    Failed to delete template: {template_id}")
 
     def run_all_tests(self):
-        """Run all backend API tests"""
-        print("🚀 Starting Syroce CRM Backend API Tests")
+        """Run all backend API tests including Phase 3+4 features"""
+        print("🚀 Starting Syroce CRM Backend API Tests (Phase 3+4)")
         print(f"📡 Backend URL: {self.base_url}")
         print("=" * 60)
         
@@ -484,11 +492,26 @@ class SyroceCRMTester:
             return 1
         
         try:
-            # Run all tests
+            # Phase 3+4: JWT Authentication tests
+            if not self.test_auth_flow():
+                print("❌ Authentication failed - cannot proceed with protected endpoints")
+                return 1
+            
+            # Phase 3+4: Image upload test
+            self.test_image_upload()
+            
+            # Core functionality tests
             self.test_dashboard_stats()
             self.test_templates_endpoint()
             self.test_clients_crud()
-            self.test_projects_crud()
+            
+            # Phase 3+4: Enhanced projects with SEO, versioning, multi-export
+            self.test_projects_crud_with_phase4_features()
+            
+            # Phase 3+4: Template cloning from project
+            self.test_template_cloning()
+            
+            # Activity log test
             self.test_activity_log()
             
         except Exception as e:
