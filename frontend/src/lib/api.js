@@ -8,6 +8,19 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// Auth interceptor
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("syroce_token");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Auth
+export const checkAuth = () => api.get("/auth/check").then((r) => r.data);
+export const login = (data) => api.post("/auth/login", data).then((r) => r.data);
+export const register = (data) => api.post("/auth/register", data).then((r) => r.data);
+export const getMe = () => api.get("/auth/me").then((r) => r.data);
+
 // Templates
 export const getTemplates = (category) =>
   api.get("/templates", { params: category ? { category } : {} }).then((r) => r.data);
@@ -15,6 +28,8 @@ export const getTemplate = (id) => api.get(`/templates/${id}`).then((r) => r.dat
 export const createTemplate = (data) => api.post("/templates", data).then((r) => r.data);
 export const updateTemplate = (id, data) => api.put(`/templates/${id}`, data).then((r) => r.data);
 export const deleteTemplate = (id) => api.delete(`/templates/${id}`).then((r) => r.data);
+export const cloneTemplateFromProject = (projectId, name, category) =>
+  api.post(`/templates/clone-from-project/${projectId}?name=${encodeURIComponent(name)}&category=${category}`).then((r) => r.data);
 
 // Projects
 export const getProjects = (status) =>
@@ -25,6 +40,19 @@ export const updateProject = (id, data) => api.put(`/projects/${id}`, data).then
 export const deleteProject = (id) => api.delete(`/projects/${id}`).then((r) => r.data);
 export const exportProject = (id) =>
   api.post(`/projects/${id}/export`, {}, { responseType: "blob" }).then((r) => r.data);
+
+// Versioning
+export const getVersions = (projectId) => api.get(`/projects/${projectId}/versions`).then((r) => r.data);
+export const createVersion = (projectId) => api.post(`/projects/${projectId}/versions`).then((r) => r.data);
+export const restoreVersion = (projectId, versionId) =>
+  api.post(`/projects/${projectId}/restore/${versionId}`).then((r) => r.data);
+
+// Upload
+export const uploadFile = (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.post("/upload", formData, { headers: { "Content-Type": "multipart/form-data" } }).then((r) => r.data);
+};
 
 // Clients
 export const getClients = (search) =>
