@@ -63,8 +63,18 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-border">
-        <p className="text-[10px] text-muted-foreground font-mono text-center">
-          Syroce CRM v1.0
+        <button
+          onClick={() => {
+            localStorage.removeItem("syroce_token");
+            window.location.reload();
+          }}
+          className="w-full text-[10px] text-muted-foreground font-mono text-center hover:text-foreground transition-colors cursor-pointer"
+          data-testid="sidebar-logout"
+        >
+          Cikis Yap
+        </button>
+        <p className="text-[10px] text-muted-foreground font-mono text-center mt-1">
+          Syroce CRM v2.0
         </p>
       </div>
     </aside>
