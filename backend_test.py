@@ -268,8 +268,8 @@ class SyroceCRMTester:
             
         return True
 
-    def test_projects_crud(self):
-        """Test projects CRUD operations"""
+    def test_projects_crud_with_phase4_features(self):
+        """Test projects CRUD with Phase 3+4 features (SEO, language, export_mode, versioning)"""
         
         # First get templates to create a project
         success, templates, status, error = self.test_api_request('GET', 'templates')
@@ -279,42 +279,108 @@ class SyroceCRMTester:
             
         template_id = templates[0]['id']
         
-        # Test CREATE project
+        # Test CREATE project with Phase 4 fields
         test_project = {
-            "name": "Test Hotel Website",
-            "template_id": template_id
+            "name": "Test Hotel Website Phase 4",
+            "template_id": template_id,
+            "language": "en"  # Phase 4 feature
         }
         
         success, project, status, error = self.test_api_request('POST', 'projects', test_project, 200)
         if success:
             self.created_resources['projects'].append(project['id'])
-            self.log_test("Projects - CREATE", True, f"Created project: {project['name']}")
+            self.log_test("Projects - CREATE with Language", True, f"Created project: {project['name']}")
             
             project_id = project['id']
             
-            # Test GET single project  
+            # Test GET single project with Phase 4 fields
             success, retrieved, status, error = self.test_api_request('GET', f'projects/{project_id}')
-            self.log_test("Projects - GET Single", success, retrieved.get('name') if success else error)
+            if success:
+                # Check Phase 4 fields exist
+                phase4_fields = ['seo', 'language', 'export_mode']
+                missing_fields = [f for f in phase4_fields if f not in retrieved]
+                if missing_fields:
+                    self.log_test("Projects - Phase 4 Fields", False, error=f"Missing: {missing_fields}")
+                else:
+                    self.log_test("Projects - Phase 4 Fields", True, "SEO, language, export_mode present")
+            else:
+                self.log_test("Projects - GET Single", False, error=error)
             
-            # Test UPDATE project
+            # Test UPDATE project with SEO, language, export_mode - Phase 4 features
             update_data = {
-                "name": "Updated Test Project",
-                "status": "published"
+                "name": "Updated Test Project Phase 4",
+                "status": "published",
+                "seo": {
+                    "title": "Amazing Hotel Website",
+                    "description": "Luxury hotel with amazing amenities",
+                    "keywords": "hotel, luxury, booking",
+                    "og_image": "https://example.com/image.jpg"
+                },
+                "language": "tr",
+                "export_mode": "multi"
             }
             success, updated, status, error = self.test_api_request('PUT', f'projects/{project_id}', update_data)
             if success:
-                self.log_test("Projects - UPDATE", True, f"Updated: {updated.get('name')} - {updated.get('status')}")
+                # Verify Phase 4 fields were saved
+                if updated.get('seo', {}).get('title') == 'Amazing Hotel Website':
+                    self.log_test("Projects - UPDATE SEO", True, f"SEO title: {updated['seo']['title']}")
+                else:
+                    self.log_test("Projects - UPDATE SEO", False, error="SEO not saved correctly")
+                    
+                if updated.get('language') == 'tr':
+                    self.log_test("Projects - UPDATE Language", True, f"Language: {updated['language']}")
+                else:
+                    self.log_test("Projects - UPDATE Language", False, error="Language not saved correctly")
+                    
+                if updated.get('export_mode') == 'multi':
+                    self.log_test("Projects - UPDATE Export Mode", True, f"Export mode: {updated['export_mode']}")
+                else:
+                    self.log_test("Projects - UPDATE Export Mode", False, error="Export mode not saved correctly")
             else:
-                self.log_test("Projects - UPDATE", False, error=error)
+                self.log_test("Projects - UPDATE Phase 4", False, error=error)
                 
-            # Test project export (should return ZIP file)
+            # Test versioning - Phase 4 features
+            success, version_created, status, error = self.test_api_request('POST', f'projects/{project_id}/versions')
+            if success:
+                version_id = version_created.get('id')
+                if version_id:
+                    self.created_resources['versions'].append({'project_id': project_id, 'version_id': version_id})
+                self.log_test("Projects - CREATE Version", True, f"Version: {version_created.get('label')}")
+                
+                # Test GET versions list
+                success, versions, status, error = self.test_api_request('GET', f'projects/{project_id}/versions')
+                if success and isinstance(versions, list):
+                    self.log_test("Projects - GET Versions", True, f"Found {len(versions)} versions")
+                    
+                    # Test version restore if we have a version
+                    if versions:
+                        version_to_restore = versions[0]['id']
+                        success, restored, status, error = self.test_api_request('POST', f'projects/{project_id}/restore/{version_to_restore}')
+                        if success:
+                            self.log_test("Projects - RESTORE Version", True, f"Restored to version {versions[0].get('label')}")
+                        else:
+                            self.log_test("Projects - RESTORE Version", False, error=error)
+                else:
+                    self.log_test("Projects - GET Versions", False, error=error)
+            else:
+                self.log_test("Projects - CREATE Version", False, error=error)
+                
+            # Test single-page export (default)
             success, export_data, status, error = self.test_api_request('POST', f'projects/{project_id}/export')
             if success:
-                # For binary data, check if we got content
-                export_success = status == 200 and export_data is not None
-                self.log_test("Projects - EXPORT", export_success, "ZIP file generated")
+                self.log_test("Projects - EXPORT Single Page", True, "ZIP file generated")
             else:
-                self.log_test("Projects - EXPORT", False, error=f"Status {status}: {error}")
+                self.log_test("Projects - EXPORT Single Page", False, error=f"Status {status}: {error}")
+                
+            # Update to multi-page and test multi-page export
+            multi_update = {"export_mode": "multi"}
+            success, _, status, error = self.test_api_request('PUT', f'projects/{project_id}', multi_update)
+            if success:
+                success, export_data, status, error = self.test_api_request('POST', f'projects/{project_id}/export')
+                if success:
+                    self.log_test("Projects - EXPORT Multi Page", True, "Multi-page ZIP generated")
+                else:
+                    self.log_test("Projects - EXPORT Multi Page", False, error=f"Status {status}: {error}")
                 
         else:
             self.log_test("Projects - CREATE", False, error=f"Status {status}: {error}")
@@ -328,6 +394,37 @@ class SyroceCRMTester:
             self.log_test("Projects - GET All", False, error=error)
             
         return True
+
+    def test_template_cloning(self):
+        """Test template cloning from project - Phase 3+4 feature"""
+        
+        # Get a project to clone from
+        success, projects, status, error = self.test_api_request('GET', 'projects')
+        if not success or not projects:
+            self.log_test("Template Cloning - Prerequisites", False, error="No projects available")
+            return False
+            
+        project_id = projects[0]['id']
+        
+        # Test clone template from project
+        clone_url = f'templates/clone-from-project/{project_id}?name=Cloned Test Template&category=custom'
+        success, cloned_template, status, error = self.test_api_request('POST', clone_url)
+        
+        if success:
+            self.created_resources['templates'].append(cloned_template['id'])
+            self.log_test("Template Cloning", True, f"Cloned template: {cloned_template['name']}")
+            
+            # Verify the cloned template has expected fields
+            required_fields = ['id', 'name', 'category', 'theme', 'sections', 'is_custom']
+            missing_fields = [f for f in required_fields if f not in cloned_template]
+            if missing_fields:
+                self.log_test("Template Cloning - Structure", False, error=f"Missing: {missing_fields}")
+            else:
+                self.log_test("Template Cloning - Structure", True, "All fields present")
+        else:
+            self.log_test("Template Cloning", False, error=f"Status {status}: {error}")
+            
+        return success
 
     def test_activity_log(self):
         """Test dashboard activity endpoint"""
