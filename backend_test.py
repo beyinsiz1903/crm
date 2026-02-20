@@ -3,6 +3,7 @@
 import requests
 import json
 import sys
+import io
 from datetime import datetime
 
 class SyroceCRMTester:
@@ -12,10 +13,12 @@ class SyroceCRMTester:
         self.session.headers.update({'Content-Type': 'application/json'})
         self.tests_run = 0
         self.tests_passed = 0
+        self.token = None
         self.created_resources = {
             'clients': [],
             'projects': [],
-            'templates': []
+            'templates': [],
+            'versions': []
         }
 
     def log_test(self, name, success, response_data=None, error=None):
