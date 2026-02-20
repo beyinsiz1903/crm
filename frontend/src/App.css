@@ -1,34 +1,201 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* Syroce CRM Global Styles */
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(220 18% 8%);
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(220 10% 25%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(220 10% 35%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* App layout */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.app-main {
+  flex: 1;
+  margin-left: var(--sidebar-w);
+  min-height: 100vh;
 }
 
-.App-link {
-    color: #61dafb;
+.page-content {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slideIn {
+  animation: slideInRight 0.25s ease-out;
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+
+/* Template card */
+.template-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+.template-card .template-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.template-card:hover .template-overlay {
+  opacity: 1;
+}
+
+/* Status badges */
+.status-draft {
+  background: hsl(220 14% 14%);
+  color: hsl(210 20% 96%);
+  border: 1px solid hsl(220 10% 18%);
+}
+.status-published {
+  background: hsl(174 70% 45% / 0.15);
+  color: hsl(210 20% 96%);
+  border: 1px solid hsl(174 70% 45% / 0.3);
+}
+.status-delivered {
+  background: hsl(202 68% 46% / 0.15);
+  color: hsl(210 20% 96%);
+  border: 1px solid hsl(202 68% 46% / 0.3);
+}
+
+/* Editor layout */
+.editor-layout {
+  display: flex;
+  height: calc(100vh - var(--editor-top));
+}
+.editor-left {
+  width: var(--editor-left);
+  min-width: 320px;
+  max-width: 480px;
+  border-right: 1px solid hsl(var(--border));
+  overflow-y: auto;
+}
+.editor-right {
+  flex: 1;
+  background: hsl(220 14% 10%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+}
+
+/* Preview frame */
+.preview-frame {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+.preview-frame.desktop {
+  width: 100%;
+  height: 100%;
+}
+.preview-frame.tablet {
+  width: 768px;
+  height: 100%;
+}
+.preview-frame.mobile {
+  width: 375px;
+  height: 100%;
+}
+.preview-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Subtle gradient for dashboard header */
+.dashboard-gradient {
+  background: radial-gradient(900px circle at 20% 10%, hsl(174 70% 45% / 0.08), transparent 60%),
+              radial-gradient(900px circle at 80% 0%, hsl(202 68% 46% / 0.06), transparent 55%);
+}
+
+/* Section item in editor */
+.section-item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-item:hover {
+  background: hsl(220 14% 12%);
+}
+.section-item.active {
+  background: hsl(174 70% 45% / 0.1);
+  border: 1px solid hsl(174 70% 45% / 0.2);
+}
+
+/* Color input wrapper */
+.color-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.color-input-wrapper input[type="color"] {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+}
+.color-input-wrapper input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+.color-input-wrapper input[type="color"]::-webkit-color-swatch {
+  border: 1px solid hsl(220 10% 25%);
+  border-radius: 6px;
+}
+
+/* No text align center on app container */
+.App {
+  text-align: left;
 }
