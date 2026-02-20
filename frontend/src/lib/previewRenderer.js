@@ -219,7 +219,7 @@ export function generatePreviewHTML(sections, theme, lang = "tr") {
   const fontsUrl = `https://fonts.googleapis.com/css2?${[...fontFamilies].map((f) => `family=${f.replace(/ /g, "+")}:wght@400;500;600;700`).join("&")}&display=swap`;
 
   const visibleSections = (sections || []).filter((s) => s.visible !== false);
-  const sectionsHtml = visibleSections.map((s) => renderSection(s, theme)).join("\n");
+  const sectionsHtml = visibleSections.map((s) => renderSection(s, theme, t)).join("\n");
   const css = generateCSS(theme);
 
   return `<!DOCTYPE html>
