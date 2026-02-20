@@ -1,26 +1,38 @@
 [
   {
-    "content": "Phase 2: Design Agent - Get UI/UX guidelines for Syroce CRM",
-    "status": "completed"
+    "content": "Phase 3: Multi-page export support (single/multi page)",
+    "status": "in_progress"
   },
   {
-    "content": "Phase 2: Install required dependencies (backend + frontend)",
-    "status": "completed"
+    "content": "Phase 3: Image upload system",
+    "status": "pending"
   },
   {
-    "content": "Phase 2: Backend - Models, Templates seed, CRUD APIs, Export",
-    "status": "completed"
+    "content": "Phase 3: SEO panel in editor",
+    "status": "pending"
   },
   {
-    "content": "Phase 2: Frontend - Dashboard, Template Gallery, Editor, Clients, Projects",
-    "status": "completed"
+    "content": "Phase 3: Template cloning from project",
+    "status": "pending"
   },
   {
-    "content": "Phase 2: All user stories covered in Development",
-    "status": "completed"
+    "content": "Phase 3: English language support for generated websites",
+    "status": "pending"
   },
   {
-    "content": "Phase 2: End to End Testing using Testing Agent",
-    "status": "completed"
+    "content": "Phase 4: Versioning (snapshots + restore)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 4: Auth (JWT login)",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 4: Performance optimization",
+    "status": "pending"
+  },
+  {
+    "content": "Phase 3+4: End to End Testing",
+    "status": "pending"
   }
 ]
