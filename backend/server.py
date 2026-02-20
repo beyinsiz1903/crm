@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Depends, Header
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -7,16 +8,19 @@ import os
 import logging
 import copy
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+from passlib.context import CryptContext
+import jwt as pyjwt
 
 from models import (
     TemplateCreate, ProjectCreate, ProjectUpdate,
-    ClientCreate, ClientUpdate
+    ClientCreate, ClientUpdate, LoginRequest, RegisterRequest
 )
 from templates_data import generate_all_templates
-from export_service import generate_full_html, create_export_zip
+from export_service import generate_full_html, create_export_zip, create_multipage_export_zip
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -31,7 +35,48 @@ api_router = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# ==================== AUTH CONFIG ====================
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+JWT_SECRET = os.environ.get("JWT_SECRET", "syroce-crm-secret-key-2025-secure")
+JWT_ALGORITHM = "HS256"
 
+def verify_password(plain, hashed):
+    return pwd_context.verify(plain, hashed)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_days=7):
+    to_encode = data.copy()
+    to_encode["exp"] = datetime.now(timezone.utc) + timedelta(days=expires_days)
+    return pyjwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def decode_token(token: str):
+    try:
+        return pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except Exception:
+        return None
+
+async def get_current_user(authorization: Optional[str] = Header(None)):
+    if not authorization:
+        return None
+    try:
+        scheme, token = authorization.split(" ", 1)
+        if scheme.lower() != "bearer":
+            return None
+        payload = decode_token(token)
+        if payload:
+            user = await db.users.find_one({"id": payload.get("user_id")}, {"_id": 0})
+            return user
+    except Exception:
+        pass
+    return None
+
+# ==================== UPLOADS ====================
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+# ==================== HELPERS ====================
 def serialize_doc(doc):
     if doc is None:
         return None
@@ -42,10 +87,8 @@ def serialize_doc(doc):
             doc[key] = value.isoformat()
     return doc
 
-
 def serialize_list(docs):
     return [serialize_doc(d) for d in docs]
-
 
 async def log_activity(activity_type: str, message: str, entity_id: str = "", entity_type: str = ""):
     activity = {
@@ -58,6 +101,60 @@ async def log_activity(activity_type: str, message: str, entity_id: str = "", en
     }
     await db.activity_log.insert_one(activity)
 
+# ==================== AUTH ====================
+
+@api_router.post("/auth/register")
+async def register(data: RegisterRequest):
+    existing = await db.users.find_one({"email": data.email})
+    if existing:
+        raise HTTPException(400, "Bu e-posta zaten kayitli")
+    user = {
+        "id": str(uuid.uuid4()),
+        "email": data.email,
+        "name": data.name,
+        "password_hash": get_password_hash(data.password),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user)
+    token = create_access_token({"user_id": user["id"], "email": user["email"]})
+    return {"token": token, "user": {"id": user["id"], "email": user["email"], "name": user["name"]}}
+
+@api_router.post("/auth/login")
+async def login(data: LoginRequest):
+    user = await db.users.find_one({"email": data.email}, {"_id": 0})
+    if not user or not verify_password(data.password, user["password_hash"]):
+        raise HTTPException(401, "Gecersiz e-posta veya sifre")
+    token = create_access_token({"user_id": user["id"], "email": user["email"]})
+    return {"token": token, "user": {"id": user["id"], "email": user["email"], "name": user.get("name", "")}}
+
+@api_router.get("/auth/me")
+async def get_me(authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Oturum gecersiz")
+    return {"id": user["id"], "email": user["email"], "name": user.get("name", "")}
+
+@api_router.get("/auth/check")
+async def check_auth():
+    count = await db.users.count_documents({})
+    return {"has_users": count > 0}
+
+# ==================== UPLOAD ====================
+
+@api_router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    allowed = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"]
+    ext = Path(file.filename).suffix.lower() if file.filename else ""
+    if ext not in allowed:
+        raise HTTPException(400, f"Desteklenmeyen dosya formati. Izin verilen: {', '.join(allowed)}")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "Dosya boyutu 5MB'yi asamaz")
+    filename = f"{uuid.uuid4()}{ext}"
+    filepath = UPLOAD_DIR / filename
+    with open(filepath, "wb") as f:
+        f.write(content)
+    return {"url": f"/api/uploads/{filename}", "filename": filename}
 
 # ==================== TEMPLATES ====================
 
@@ -69,14 +166,12 @@ async def list_templates(category: Optional[str] = None):
     templates = await db.templates.find(query, {"_id": 0}).sort("name", 1).to_list(100)
     return serialize_list(templates)
 
-
 @api_router.get("/templates/{template_id}")
 async def get_template(template_id: str):
     template = await db.templates.find_one({"id": template_id}, {"_id": 0})
     if not template:
         raise HTTPException(status_code=404, detail="Template bulunamadi")
     return serialize_doc(template)
-
 
 @api_router.post("/templates")
 async def create_template(data: TemplateCreate):
@@ -115,6 +210,32 @@ async def create_template(data: TemplateCreate):
     await log_activity("template_created", f"'{template['name']}' sablonu olusturuldu", template["id"], "template")
     return serialize_doc(template)
 
+@api_router.post("/templates/clone-from-project/{project_id}")
+async def clone_template_from_project(project_id: str, name: str = "Yeni Sablon", category: str = "custom"):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Proje bulunamadi")
+    now = datetime.now(timezone.utc).isoformat()
+    template = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "category": category,
+        "description": f"'{project.get('name', '')}' projesinden olusturuldu",
+        "thumbnail": "",
+        "theme": copy.deepcopy(project.get("theme", {})),
+        "sections": copy.deepcopy(project.get("sections", [])),
+        "is_custom": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    # Get thumbnail from hero section
+    for s in template["sections"]:
+        if s.get("type") == "hero" and s.get("props", {}).get("backgroundImage"):
+            template["thumbnail"] = s["props"]["backgroundImage"]
+            break
+    await db.templates.insert_one(template)
+    await log_activity("template_created", f"'{name}' sablonu projeden olusturuldu", template["id"], "template")
+    return serialize_doc(template)
 
 @api_router.put("/templates/{template_id}")
 async def update_template(template_id: str, data: dict):
@@ -127,14 +248,12 @@ async def update_template(template_id: str, data: dict):
     updated = await db.templates.find_one({"id": template_id}, {"_id": 0})
     return serialize_doc(updated)
 
-
 @api_router.delete("/templates/{template_id}")
 async def delete_template(template_id: str):
     result = await db.templates.delete_one({"id": template_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Template bulunamadi")
     return {"message": "Template silindi"}
-
 
 # ==================== PROJECTS ====================
 
@@ -146,7 +265,6 @@ async def list_projects(status: Optional[str] = None):
     projects = await db.projects.find(query, {"_id": 0}).sort("updated_at", -1).to_list(100)
     return serialize_list(projects)
 
-
 @api_router.get("/projects/{project_id}")
 async def get_project(project_id: str):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
@@ -154,14 +272,12 @@ async def get_project(project_id: str):
         raise HTTPException(status_code=404, detail="Proje bulunamadi")
     return serialize_doc(project)
 
-
 @api_router.post("/projects")
 async def create_project(data: ProjectCreate):
     template = await db.templates.find_one({"id": data.template_id}, {"_id": 0})
     if not template:
         raise HTTPException(status_code=404, detail="Template bulunamadi")
     now = datetime.now(timezone.utc).isoformat()
-    # Deep copy sections to avoid modifying template
     sections = copy.deepcopy(template.get("sections", []))
     project = {
         "id": str(uuid.uuid4()),
@@ -173,13 +289,15 @@ async def create_project(data: ProjectCreate):
         "status": "draft",
         "domain_notes": "",
         "hosting_notes": "",
+        "seo": {"title": "", "description": "", "keywords": "", "og_image": ""},
+        "language": data.language or "tr",
+        "export_mode": "single",
         "created_at": now,
         "updated_at": now,
     }
     await db.projects.insert_one(project)
     await log_activity("project_created", f"'{data.name}' projesi olusturuldu", project["id"], "project")
     return serialize_doc(project)
-
 
 @api_router.put("/projects/{project_id}")
 async def update_project(project_id: str, data: ProjectUpdate):
@@ -192,14 +310,13 @@ async def update_project(project_id: str, data: ProjectUpdate):
     updated = await db.projects.find_one({"id": project_id}, {"_id": 0})
     return serialize_doc(updated)
 
-
 @api_router.delete("/projects/{project_id}")
 async def delete_project(project_id: str):
     result = await db.projects.delete_one({"id": project_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Proje bulunamadi")
+    await db.versions.delete_many({"project_id": project_id})
     return {"message": "Proje silindi"}
-
 
 @api_router.get("/projects/{project_id}/preview")
 async def preview_project(project_id: str):
@@ -209,27 +326,80 @@ async def preview_project(project_id: str):
     html = generate_full_html(project)
     return Response(content=html, media_type="text/html")
 
-
 @api_router.post("/projects/{project_id}/export")
 async def export_project(project_id: str):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Proje bulunamadi")
-    zip_bytes = create_export_zip(project)
+    export_mode = project.get("export_mode", "single")
+    if export_mode == "multi":
+        zip_bytes = create_multipage_export_zip(project)
+    else:
+        zip_bytes = create_export_zip(project)
     filename = project.get("name", "hotel-website").lower().replace(" ", "-")
-    await log_activity("project_exported", f"'{project['name']}' projesi disari aktarildi", project_id, "project")
+    await log_activity("project_exported", f"'{project['name']}' projesi disari aktarildi ({export_mode})", project_id, "project")
     return Response(
         content=zip_bytes,
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={filename}.zip"}
     )
 
-
 @api_router.post("/preview")
 async def preview_html(data: dict):
     html = generate_full_html(data)
     return Response(content=html, media_type="text/html")
 
+# ==================== VERSIONING ====================
+
+@api_router.get("/projects/{project_id}/versions")
+async def list_versions(project_id: str):
+    versions = await db.versions.find(
+        {"project_id": project_id}, {"_id": 0, "theme": 0, "sections": 0, "seo": 0}
+    ).sort("created_at", -1).to_list(50)
+    return serialize_list(versions)
+
+@api_router.post("/projects/{project_id}/versions")
+async def create_version(project_id: str):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Proje bulunamadi")
+    # Count existing versions
+    count = await db.versions.count_documents({"project_id": project_id})
+    version = {
+        "id": str(uuid.uuid4()),
+        "project_id": project_id,
+        "version_number": count + 1,
+        "label": f"v{count + 1}",
+        "theme": copy.deepcopy(project.get("theme", {})),
+        "sections": copy.deepcopy(project.get("sections", [])),
+        "seo": copy.deepcopy(project.get("seo", {})),
+        "language": project.get("language", "tr"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.versions.insert_one(version)
+    # Keep only last 20 versions
+    if count >= 20:
+        oldest = await db.versions.find({"project_id": project_id}).sort("created_at", 1).limit(1).to_list(1)
+        if oldest:
+            await db.versions.delete_one({"id": oldest[0]["id"]})
+    return serialize_doc(version)
+
+@api_router.post("/projects/{project_id}/restore/{version_id}")
+async def restore_version(project_id: str, version_id: str):
+    version = await db.versions.find_one({"id": version_id, "project_id": project_id}, {"_id": 0})
+    if not version:
+        raise HTTPException(404, "Versiyon bulunamadi")
+    update_data = {
+        "theme": version["theme"],
+        "sections": version["sections"],
+        "seo": version.get("seo", {}),
+        "language": version.get("language", "tr"),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.projects.update_one({"id": project_id}, {"$set": update_data})
+    updated = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    await log_activity("project_restored", f"Proje {version['label']} versiyonuna geri yuklendi", project_id, "project")
+    return serialize_doc(updated)
 
 # ==================== CLIENTS ====================
 
@@ -245,14 +415,12 @@ async def list_clients(search: Optional[str] = None):
     clients = await db.clients.find(query, {"_id": 0}).sort("hotel_name", 1).to_list(100)
     return serialize_list(clients)
 
-
 @api_router.get("/clients/{client_id}")
 async def get_client(client_id: str):
     c = await db.clients.find_one({"id": client_id}, {"_id": 0})
     if not c:
         raise HTTPException(status_code=404, detail="Musteri bulunamadi")
     return serialize_doc(c)
-
 
 @api_router.post("/clients")
 async def create_client(data: ClientCreate):
@@ -267,7 +435,6 @@ async def create_client(data: ClientCreate):
     await log_activity("client_added", f"'{data.hotel_name}' musterisi eklendi", client_doc["id"], "client")
     return serialize_doc(client_doc)
 
-
 @api_router.put("/clients/{client_id}")
 async def update_client(client_id: str, data: ClientUpdate):
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
@@ -278,14 +445,12 @@ async def update_client(client_id: str, data: ClientUpdate):
     updated = await db.clients.find_one({"id": client_id}, {"_id": 0})
     return serialize_doc(updated)
 
-
 @api_router.delete("/clients/{client_id}")
 async def delete_client(client_id: str):
     result = await db.clients.delete_one({"id": client_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Musteri bulunamadi")
     return {"message": "Musteri silindi"}
-
 
 # ==================== DASHBOARD ====================
 
@@ -308,12 +473,10 @@ async def get_dashboard_stats():
         }
     }
 
-
 @api_router.get("/dashboard/activity")
 async def get_activity(limit: int = 20):
     activities = await db.activity_log.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
     return serialize_list(activities)
-
 
 # ==================== SEED ====================
 
@@ -322,13 +485,11 @@ async def seed_templates():
     count = await db.templates.count_documents({"is_custom": {"$ne": True}})
     if count >= 30:
         return {"message": "Sablonlar zaten mevcut", "count": count}
-    # Remove old non-custom templates and re-seed
     await db.templates.delete_many({"is_custom": {"$ne": True}})
     templates = generate_all_templates()
     if templates:
         await db.templates.insert_many(templates)
     return {"message": f"{len(templates)} sablon yuklendi", "count": len(templates)}
-
 
 @app.on_event("startup")
 async def startup_event():
@@ -341,12 +502,14 @@ async def startup_event():
             await db.templates.insert_many(templates)
         logger.info(f"{len(templates)} sablon yuklendi")
     else:
-        logger.info(f"{count} sablon mevcut, yukleme atlanıyor")
-
+        logger.info(f"{count} sablon mevcut")
 
 # ==================== APP CONFIG ====================
 
 app.include_router(api_router)
+
+# Mount uploads AFTER router
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,

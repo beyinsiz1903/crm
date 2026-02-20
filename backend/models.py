@@ -1,19 +1,10 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 import uuid
 
 
-class ThemeConfig(BaseModel):
-    primaryColor: str = "#C5A572"
-    secondaryColor: str = "#1A1A2E"
-    backgroundColor: str = "#FFFFFF"
-    textColor: str = "#333333"
-    accentColor: str = "#8B6914"
-    headerFont: str = "'Playfair Display', serif"
-    bodyFont: str = "'Lato', sans-serif"
-
-
+# ============ TEMPLATES ============
 class TemplateCreate(BaseModel):
     name: str
     category: str = "custom"
@@ -24,10 +15,12 @@ class TemplateCreate(BaseModel):
     clone_from: Optional[str] = None
 
 
+# ============ PROJECTS ============
 class ProjectCreate(BaseModel):
     name: str
     template_id: str
     client_id: Optional[str] = None
+    language: str = "tr"
 
 
 class ProjectUpdate(BaseModel):
@@ -38,8 +31,12 @@ class ProjectUpdate(BaseModel):
     status: Optional[str] = None
     domain_notes: Optional[str] = None
     hosting_notes: Optional[str] = None
+    seo: Optional[Dict[str, Any]] = None
+    language: Optional[str] = None
+    export_mode: Optional[str] = None  # "single" or "multi"
 
 
+# ============ CLIENTS ============
 class ClientCreate(BaseModel):
     hotel_name: str
     contact_name: str = ""
@@ -58,3 +55,15 @@ class ClientUpdate(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     notes: Optional[str] = None
+
+
+# ============ AUTH ============
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    name: str = "Admin"
