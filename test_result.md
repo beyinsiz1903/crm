@@ -111,11 +111,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET/POST/PUT/DELETE /api/leads, PUT /api/leads/{id}/stage, PUT /api/leads/{id}/score, PUT /api/leads/{id}/assign endpoints implemented. Auto-scoring on creation."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - All lead endpoints tested successfully. Verified: POST create lead with auto-scoring (email+phone+company+referral source = 50 points), GET list leads with filters, PUT update stage to 'contacted', PUT update score to 80, PUT general lead updates. Auto-scoring working correctly: email(10) + phone(10) + company(10) + referral(20) = 50 points as expected."
 
   - task: "Pipeline stages + board endpoints"
     implemented: true
