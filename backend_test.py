@@ -8,7 +8,7 @@ from datetime import datetime
 
 class SyroceCRMTester:
     def __init__(self):
-        self.base_url = "https://web-generator-hotels.preview.emergentagent.com/api"
+        self.base_url = "https://static-web-builder.preview.emergentagent.com/api"
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})
         self.tests_run = 0
