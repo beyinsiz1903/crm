@@ -1,6 +1,12 @@
 import io
+import os
+import re
 import zipfile
-from typing import Dict, Any, List
+import httpx
+import hashlib
+import asyncio
+from typing import Dict, Any, List, Tuple
+from urllib.parse import urlparse
 
 # ==================== TRANSLATIONS ====================
 TRANSLATIONS = {
@@ -15,6 +21,12 @@ TRANSLATIONS = {
         "powered_by": "Powered by", "view_all_rooms": "Tum Odalari Gor",
         "view_gallery": "Galeriyi Gor", "our_services": "Hizmetlerimiz",
         "guest_reviews": "Misafir Yorumlari",
+        "check_in": "Giris Tarihi", "check_out": "Cikis Tarihi",
+        "guests": "Misafir Sayisi", "room_type": "Oda Tipi",
+        "book_room": "Oda Rezervasyonu", "booking_title": "Rezervasyon",
+        "booking_subtitle": "Tatilinizi simdi planlayin",
+        "select_room": "Oda Secin", "adults": "Yetiskin", "children": "Cocuk",
+        "make_reservation": "Rezervasyon Yap", "phone": "Telefon",
     },
     "en": {
         "home": "Home", "about": "About", "rooms": "Rooms",
@@ -27,6 +39,156 @@ TRANSLATIONS = {
         "powered_by": "Powered by", "view_all_rooms": "View All Rooms",
         "view_gallery": "View Gallery", "our_services": "Our Services",
         "guest_reviews": "Guest Reviews",
+        "check_in": "Check-in", "check_out": "Check-out",
+        "guests": "Guests", "room_type": "Room Type",
+        "book_room": "Book a Room", "booking_title": "Reservation",
+        "booking_subtitle": "Plan your stay today",
+        "select_room": "Select Room", "adults": "Adults", "children": "Children",
+        "make_reservation": "Make Reservation", "phone": "Phone",
+    },
+    "de": {
+        "home": "Startseite", "about": "Uber uns", "rooms": "Zimmer",
+        "gallery": "Galerie", "services": "Dienstleistungen", "contact": "Kontakt",
+        "testimonials": "Bewertungen", "book_now": "Jetzt buchen",
+        "send": "Senden", "your_name": "Ihr Name",
+        "your_email": "Ihre E-Mail", "subject": "Betreff",
+        "message": "Ihre Nachricht", "quick_links": "Schnellzugriff",
+        "contact_info": "Kontaktinformationen", "all_rights": "Alle Rechte vorbehalten",
+        "powered_by": "Powered by", "view_all_rooms": "Alle Zimmer ansehen",
+        "view_gallery": "Galerie ansehen", "our_services": "Unsere Dienstleistungen",
+        "guest_reviews": "Gastebewertungen",
+        "check_in": "Anreise", "check_out": "Abreise",
+        "guests": "Gaste", "room_type": "Zimmertyp",
+        "book_room": "Zimmer buchen", "booking_title": "Reservierung",
+        "booking_subtitle": "Planen Sie Ihren Aufenthalt",
+        "select_room": "Zimmer wahlen", "adults": "Erwachsene", "children": "Kinder",
+        "make_reservation": "Reservierung vornehmen", "phone": "Telefon",
+    },
+    "fr": {
+        "home": "Accueil", "about": "A propos", "rooms": "Chambres",
+        "gallery": "Galerie", "services": "Services", "contact": "Contact",
+        "testimonials": "Temoignages", "book_now": "Reserver maintenant",
+        "send": "Envoyer", "your_name": "Votre nom",
+        "your_email": "Votre e-mail", "subject": "Sujet",
+        "message": "Votre message", "quick_links": "Liens rapides",
+        "contact_info": "Coordonnees", "all_rights": "Tous droits reserves",
+        "powered_by": "Powered by", "view_all_rooms": "Voir toutes les chambres",
+        "view_gallery": "Voir la galerie", "our_services": "Nos services",
+        "guest_reviews": "Avis des clients",
+        "check_in": "Arrivee", "check_out": "Depart",
+        "guests": "Voyageurs", "room_type": "Type de chambre",
+        "book_room": "Reserver une chambre", "booking_title": "Reservation",
+        "booking_subtitle": "Planifiez votre sejour",
+        "select_room": "Choisir la chambre", "adults": "Adultes", "children": "Enfants",
+        "make_reservation": "Reserver", "phone": "Telephone",
+    },
+    "es": {
+        "home": "Inicio", "about": "Nosotros", "rooms": "Habitaciones",
+        "gallery": "Galeria", "services": "Servicios", "contact": "Contacto",
+        "testimonials": "Opiniones", "book_now": "Reservar ahora",
+        "send": "Enviar", "your_name": "Su nombre",
+        "your_email": "Su correo", "subject": "Asunto",
+        "message": "Su mensaje", "quick_links": "Enlaces rapidos",
+        "contact_info": "Informacion de contacto", "all_rights": "Todos los derechos reservados",
+        "powered_by": "Powered by", "view_all_rooms": "Ver todas las habitaciones",
+        "view_gallery": "Ver galeria", "our_services": "Nuestros servicios",
+        "guest_reviews": "Opiniones de huespedes",
+        "check_in": "Llegada", "check_out": "Salida",
+        "guests": "Huespedes", "room_type": "Tipo de habitacion",
+        "book_room": "Reservar habitacion", "booking_title": "Reserva",
+        "booking_subtitle": "Planifique su estancia",
+        "select_room": "Seleccionar habitacion", "adults": "Adultos", "children": "Ninos",
+        "make_reservation": "Hacer reserva", "phone": "Telefono",
+    },
+    "it": {
+        "home": "Home", "about": "Chi siamo", "rooms": "Camere",
+        "gallery": "Galleria", "services": "Servizi", "contact": "Contatti",
+        "testimonials": "Recensioni", "book_now": "Prenota ora",
+        "send": "Invia", "your_name": "Nome",
+        "your_email": "Email", "subject": "Oggetto",
+        "message": "Messaggio", "quick_links": "Link rapidi",
+        "contact_info": "Informazioni di contatto", "all_rights": "Tutti i diritti riservati",
+        "powered_by": "Powered by", "view_all_rooms": "Vedi tutte le camere",
+        "view_gallery": "Vedi galleria", "our_services": "I nostri servizi",
+        "guest_reviews": "Recensioni degli ospiti",
+        "check_in": "Check-in", "check_out": "Check-out",
+        "guests": "Ospiti", "room_type": "Tipo di camera",
+        "book_room": "Prenota camera", "booking_title": "Prenotazione",
+        "booking_subtitle": "Pianifica il tuo soggiorno",
+        "select_room": "Seleziona camera", "adults": "Adulti", "children": "Bambini",
+        "make_reservation": "Prenota", "phone": "Telefono",
+    },
+    "ru": {
+        "home": "Glavnaya", "about": "O nas", "rooms": "Nomera",
+        "gallery": "Galereya", "services": "Uslugi", "contact": "Kontakty",
+        "testimonials": "Otzyvy", "book_now": "Zabronirovat",
+        "send": "Otpravit", "your_name": "Vashe imya",
+        "your_email": "Vash email", "subject": "Tema",
+        "message": "Soobshchenie", "quick_links": "Bystrye ssylki",
+        "contact_info": "Kontaktnaya informatsiya", "all_rights": "Vse prava zashchishcheny",
+        "powered_by": "Powered by", "view_all_rooms": "Vse nomera",
+        "view_gallery": "Galereya", "our_services": "Nashi uslugi",
+        "guest_reviews": "Otzyvy gostey",
+        "check_in": "Zaseleniye", "check_out": "Vyseleniye",
+        "guests": "Gosti", "room_type": "Tip nomera",
+        "book_room": "Zabronirovat nomer", "booking_title": "Bronirovaniye",
+        "booking_subtitle": "Zaplanируйте поездку",
+        "select_room": "Vybrat nomer", "adults": "Vzroslyye", "children": "Deti",
+        "make_reservation": "Zabronirovat", "phone": "Telefon",
+    },
+    "ar": {
+        "home": "الرئيسية", "about": "من نحن", "rooms": "الغرف",
+        "gallery": "المعرض", "services": "الخدمات", "contact": "اتصل بنا",
+        "testimonials": "آراء الضيوف", "book_now": "احجز الآن",
+        "send": "إرسال", "your_name": "الاسم",
+        "your_email": "البريد الإلكتروني", "subject": "الموضوع",
+        "message": "الرسالة", "quick_links": "روابط سريعة",
+        "contact_info": "معلومات الاتصال", "all_rights": "جميع الحقوق محفوظة",
+        "powered_by": "Powered by", "view_all_rooms": "جميع الغرف",
+        "view_gallery": "عرض المعرض", "our_services": "خدماتنا",
+        "guest_reviews": "آراء الضيوف",
+        "check_in": "تسجيل الوصول", "check_out": "تسجيل المغادرة",
+        "guests": "الضيوف", "room_type": "نوع الغرفة",
+        "book_room": "حجز غرفة", "booking_title": "الحجز",
+        "booking_subtitle": "خطط لإقامتك الآن",
+        "select_room": "اختر الغرفة", "adults": "بالغين", "children": "أطفال",
+        "make_reservation": "إجراء الحجز", "phone": "الهاتف",
+    },
+    "ja": {
+        "home": "ホーム", "about": "ホテルについて", "rooms": "客室",
+        "gallery": "ギャラリー", "services": "サービス", "contact": "お問い合わせ",
+        "testimonials": "お客様の声", "book_now": "予約する",
+        "send": "送信", "your_name": "お名前",
+        "your_email": "メールアドレス", "subject": "件名",
+        "message": "メッセージ", "quick_links": "クイックリンク",
+        "contact_info": "連絡先情報", "all_rights": "全著作権所有",
+        "powered_by": "Powered by", "view_all_rooms": "全客室を見る",
+        "view_gallery": "ギャラリーを見る", "our_services": "サービス一覧",
+        "guest_reviews": "お客様の声",
+        "check_in": "チェックイン", "check_out": "チェックアウト",
+        "guests": "人数", "room_type": "客室タイプ",
+        "book_room": "客室予約", "booking_title": "ご予約",
+        "booking_subtitle": "ご滞在を計画しましょう",
+        "select_room": "客室を選択", "adults": "大人", "children": "お子様",
+        "make_reservation": "予約する", "phone": "電話",
+    },
+    "zh": {
+        "home": "首页", "about": "关于我们", "rooms": "客房",
+        "gallery": "画廊", "services": "服务", "contact": "联系我们",
+        "testimonials": "客户评价", "book_now": "立即预订",
+        "send": "发送", "your_name": "您的姓名",
+        "your_email": "您的邮箱", "subject": "主题",
+        "message": "留言", "quick_links": "快速链接",
+        "contact_info": "联系信息", "all_rights": "版权所有",
+        "powered_by": "Powered by", "view_all_rooms": "查看所有客房",
+        "view_gallery": "查看画廊", "our_services": "我们的服务",
+        "guest_reviews": "客户评价",
+        "check_in": "入住", "check_out": "退房",
+        "guests": "客人", "room_type": "房型",
+        "book_room": "预订客房", "booking_title": "预订",
+        "booking_subtitle": "立即规划您的住宿",
+        "select_room": "选择客房", "adults": "成人", "children": "儿童",
+        "make_reservation": "立即预订", "phone": "电话",
     },
 }
 
@@ -128,6 +290,14 @@ def generate_css(theme: Dict[str, Any]) -> str:
     .cta-banner .hero-content{{position:relative;z-index:2}}
     .cta-banner h2{{font-size:2.5rem;margin-bottom:15px}}
     .cta-banner p{{font-size:1.2rem;margin-bottom:30px;opacity:0.9}}
+    .booking-section{{background:linear-gradient(135deg,{sc}05,{pc}08);padding:80px 0}}
+    .booking-form-container{{max-width:900px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 8px 40px rgba(0,0,0,0.1)}}
+    .booking-form{{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;margin-top:30px}}
+    .booking-field label{{display:block;font-size:0.85rem;font-weight:600;margin-bottom:8px;color:{sc}}}
+    .booking-field input,.booking-field select{{width:100%;padding:12px 16px;border:2px solid #eee;border-radius:8px;font-size:1rem;font-family:{bf};transition:border 0.2s}}
+    .booking-field input:focus,.booking-field select:focus{{border-color:{pc};outline:none}}
+    .booking-submit{{grid-column:1/-1;text-align:center;margin-top:10px}}
+    .booking-submit .btn{{padding:16px 60px;font-size:1.1rem}}
     .site-footer{{background:{sc};color:#fff;padding:60px 0 30px}}
     .footer-grid{{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:40px}}
     .footer-grid h3{{font-size:1.3rem;margin-bottom:20px;font-family:{hf}}}
@@ -148,6 +318,7 @@ def generate_css(theme: Dict[str, Any]) -> str:
       .site-header nav{{display:none}}
       .hero h1{{font-size:2.2rem}}
       .section{{padding:60px 0}}
+      .booking-form{{grid-template-columns:1fr}}
     }}
     """
 
@@ -251,6 +422,61 @@ def render_banner(props, theme, lang="tr"):
     return f'<section class="cta-banner"><div class="hero-bg" style="background-image:url(\'{bg}\')"></div><div class="hero-overlay"></div><div class="hero-content"><h2>{title}</h2><p>{subtitle}</p>{cta_html}</div></section>'
 
 
+def render_booking(props, theme, lang="tr"):
+    t = get_t(lang)
+    title = props.get("title", t["booking_title"])
+    subtitle = props.get("subtitle", t["booking_subtitle"])
+    booking_url = props.get("bookingUrl", "")
+    phone = props.get("phone", "")
+    email = props.get("email", "")
+    room_types = props.get("roomTypes", [])
+    widget_code = props.get("widgetCode", "")
+    pc = theme.get("primaryColor", "#C5A572")
+
+    # If external widget code is provided, render it
+    if widget_code:
+        return f'<section class="booking-section section" id="rezervasyon"><div class="container"><h2 class="section-title">{title}</h2><p class="section-subtitle">{subtitle}</p><div class="booking-form-container">{widget_code}</div></div></section>'
+
+    # Default booking form
+    room_options = "".join([f'<option value="{r}">{r}</option>' for r in room_types]) if room_types else f'<option>{t["select_room"]}</option>'
+
+    action_attr = f'action="{booking_url}" method="POST"' if booking_url else 'onsubmit="return false;"'
+
+    contact_info = ""
+    if phone or email:
+        contact_info = f'<div style="text-align:center;margin-top:25px;padding-top:20px;border-top:1px solid #eee;color:#666;font-size:0.95rem">'
+        if phone:
+            contact_info += f'<span>{t["phone"]}: <strong>{phone}</strong></span>'
+        if phone and email:
+            contact_info += f' &nbsp;|&nbsp; '
+        if email:
+            contact_info += f'<span>Email: <strong>{email}</strong></span>'
+        contact_info += '</div>'
+
+    return f'''<section class="booking-section section" id="rezervasyon">
+<div class="container">
+<h2 class="section-title">{title}</h2>
+<p class="section-subtitle">{subtitle}</p>
+<div class="booking-form-container">
+<form {action_attr}>
+<div class="booking-form">
+<div class="booking-field"><label>{t["check_in"]}</label><input type="date" name="checkin" required></div>
+<div class="booking-field"><label>{t["check_out"]}</label><input type="date" name="checkout" required></div>
+<div class="booking-field"><label>{t["adults"]}</label><select name="adults"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+<div class="booking-field"><label>{t["children"]}</label><select name="children"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></div>
+<div class="booking-field"><label>{t["room_type"]}</label><select name="room_type">{room_options}</select></div>
+<div class="booking-field"><label>{t["your_name"]}</label><input type="text" name="name" placeholder="{t["your_name"]}" required></div>
+<div class="booking-field"><label>{t["your_email"]}</label><input type="email" name="email" placeholder="{t["your_email"]}" required></div>
+<div class="booking-field"><label>{t["phone"]}</label><input type="tel" name="phone" placeholder="{t["phone"]}"></div>
+<div class="booking-submit"><button type="submit" class="btn">{t["make_reservation"]}</button></div>
+</div>
+</form>
+{contact_info}
+</div>
+</div>
+</section>'''
+
+
 def render_footer(props, theme, lang="tr"):
     hotel_name = props.get("hotelName", "Hotel")
     address = props.get("address", "")
@@ -272,6 +498,7 @@ SECTION_RENDERERS = {
     "testimonials": render_testimonials,
     "contact": render_contact,
     "banner": render_banner,
+    "booking": render_booking,
     "footer": render_footer,
 }
 
@@ -304,6 +531,27 @@ def _get_seo_meta(project_data):
     return meta
 
 
+def _get_analytics_code(project_data):
+    """Generate analytics tracking code from project settings."""
+    analytics = project_data.get("analytics", {})
+    code = ""
+    ga_id = analytics.get("ga_id", "")
+    if ga_id:
+        code += f'''<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){{dataLayer.push(arguments);}}
+gtag('js', new Date());
+gtag('config', '{ga_id}');
+</script>
+'''
+    custom_code = analytics.get("custom_head_code", "")
+    if custom_code:
+        code += f'\n<!-- Custom Tracking Code -->\n{custom_code}\n'
+    return code
+
+
 def generate_full_html(project_data: Dict[str, Any]) -> str:
     theme = project_data.get("theme", {})
     sections = project_data.get("sections", [])
@@ -313,6 +561,7 @@ def generate_full_html(project_data: Dict[str, Any]) -> str:
     page_title = seo.get("title") or project_name
     fonts_url = _get_fonts_url(theme)
     seo_meta = _get_seo_meta(project_data)
+    analytics_code = _get_analytics_code(project_data)
 
     sections_html = ""
     for section in sections:
@@ -333,6 +582,7 @@ def generate_full_html(project_data: Dict[str, Any]) -> str:
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="{fonts_url}" rel="stylesheet">
+    {analytics_code}
     <style>{css}</style>
 </head>
 <body>
@@ -341,7 +591,7 @@ def generate_full_html(project_data: Dict[str, Any]) -> str:
 </html>"""
 
 
-def _build_page_html(title, css, fonts_url, seo_meta, lang, header_html, body_sections, footer_html):
+def _build_page_html(title, css, fonts_url, seo_meta, lang, header_html, body_sections, footer_html, analytics_code=""):
     return f"""<!DOCTYPE html>
 <html lang="{lang}">
 <head>
@@ -352,6 +602,7 @@ def _build_page_html(title, css, fonts_url, seo_meta, lang, header_html, body_se
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="{fonts_url}" rel="stylesheet">
+    {analytics_code}
     <style>{css}</style>
 </head>
 <body>
@@ -360,6 +611,62 @@ def _build_page_html(title, css, fonts_url, seo_meta, lang, header_html, body_se
 {footer_html}
 </body>
 </html>"""
+
+
+# ==================== ASSET BUNDLING ====================
+def _extract_image_urls(html_content: str) -> List[str]:
+    """Extract all image URLs from HTML content."""
+    urls = set()
+    # Match src="..." and url('...')
+    src_pattern = re.compile(r'(?:src|href)=["\']([^"\']+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^"\']*)?)["\']', re.IGNORECASE)
+    url_pattern = re.compile(r'url\(["\']?([^"\')\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^"\')\s]*)?)["\']?\)', re.IGNORECASE)
+
+    for match in src_pattern.finditer(html_content):
+        url = match.group(1)
+        if url.startswith(('http://', 'https://')):
+            urls.add(url)
+
+    for match in url_pattern.finditer(html_content):
+        url = match.group(1)
+        if url.startswith(('http://', 'https://')):
+            urls.add(url)
+
+    return list(urls)
+
+
+async def _download_image(client: httpx.AsyncClient, url: str) -> Tuple[str, bytes, str]:
+    """Download an image and return (url, content, filename)."""
+    try:
+        response = await client.get(url, follow_redirects=True, timeout=15.0)
+        if response.status_code == 200:
+            parsed = urlparse(url)
+            ext = os.path.splitext(parsed.path)[1] or '.jpg'
+            # Use hash of URL for filename to avoid collisions
+            url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
+            filename = f"img_{url_hash}{ext.split('?')[0]}"
+            return url, response.content, filename
+    except Exception:
+        pass
+    return url, b"", ""
+
+
+async def bundle_assets_in_html(html_content: str) -> Tuple[str, Dict[str, bytes]]:
+    """Download external images and replace URLs with local paths. Returns modified HTML and asset dict."""
+    urls = _extract_image_urls(html_content)
+    if not urls:
+        return html_content, {}
+
+    assets = {}
+    async with httpx.AsyncClient() as client:
+        tasks = [_download_image(client, url) for url in urls[:50]]  # Limit to 50 images
+        results = await asyncio.gather(*tasks)
+
+    for url, content, filename in results:
+        if content and filename:
+            assets[f"assets/{filename}"] = content
+            html_content = html_content.replace(url, f"assets/{filename}")
+
+    return html_content, assets
 
 
 def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
@@ -372,6 +679,7 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
     page_title = seo.get("title") or project_name
     fonts_url = _get_fonts_url(theme)
     seo_meta = _get_seo_meta(project_data)
+    analytics_code = _get_analytics_code(project_data)
     css = generate_css(theme)
     folder = project_name.lower().replace(" ", "-")
 
@@ -385,6 +693,7 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
     testimonials_props = {}
     contact_props = {}
     footer_props = {}
+    booking_props = {}
     banners = []
 
     for s in sections:
@@ -401,6 +710,7 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
         elif st == "testimonials": testimonials_props = p
         elif st == "contact": contact_props = p
         elif st == "footer": footer_props = p
+        elif st == "booking": booking_props = p
         elif st == "banner": banners.append(p)
 
     # Multi-page navigation
@@ -414,29 +724,31 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
     header_html = render_header(header_props, theme, lang, nav_links=nav_links)
     footer_html = render_footer(footer_props, theme, lang)
 
-    # Home page: hero + about + services + testimonials + banners
+    # Home page: hero + about + services + booking + testimonials + banners
     home_body = render_hero(hero_props, theme, lang)
     home_body += render_about(about_props, theme, lang)
     home_body += render_services(services_props, theme, lang)
+    if booking_props:
+        home_body += render_booking(booking_props, theme, lang)
     home_body += render_testimonials(testimonials_props, theme, lang)
     for bp in banners:
         home_body += render_banner(bp, theme, lang)
-    home_html = _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html)
+    home_html = _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code)
 
     # Rooms page
     rooms_body = f'<div style="padding-top:80px"></div>'
     rooms_body += render_rooms(rooms_props, theme, lang)
-    rooms_html = _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, rooms_body, footer_html)
+    rooms_html = _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, rooms_body, footer_html, analytics_code)
 
     # Gallery page
     gallery_body = f'<div style="padding-top:80px"></div>'
     gallery_body += render_gallery(gallery_props, theme, lang)
-    gallery_html = _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, gallery_body, footer_html)
+    gallery_html = _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, gallery_body, footer_html, analytics_code)
 
     # Contact page
     contact_body = f'<div style="padding-top:80px"></div>'
     contact_body += render_contact(contact_props, theme, lang)
-    contact_html = _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, contact_body, footer_html)
+    contact_html = _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, contact_body, footer_html, analytics_code)
 
     # Create ZIP
     buffer = io.BytesIO()
@@ -468,6 +780,114 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
 Powered by Syroce - https://syroce.com
 """
         zf.writestr(f"{folder}/README.md", readme)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) -> bytes:
+    """Create multipage export ZIP with bundled assets."""
+    theme = project_data.get("theme", {})
+    sections = project_data.get("sections", [])
+    project_name = project_data.get("name", "Hotel Website")
+    lang = project_data.get("language", "tr")
+    t = get_t(lang)
+    seo = project_data.get("seo", {})
+    page_title = seo.get("title") or project_name
+    fonts_url = _get_fonts_url(theme)
+    seo_meta = _get_seo_meta(project_data)
+    analytics_code = _get_analytics_code(project_data)
+    css = generate_css(theme)
+    folder = project_name.lower().replace(" ", "-")
+
+    header_props = {}
+    hero_props = {}
+    about_props = {}
+    rooms_props = {}
+    gallery_props = {}
+    services_props = {}
+    testimonials_props = {}
+    contact_props = {}
+    footer_props = {}
+    booking_props = {}
+    banners = []
+
+    for s in sections:
+        if not s.get("visible", True):
+            continue
+        st = s.get("type")
+        p = s.get("props", {})
+        if st == "header": header_props = p
+        elif st == "hero": hero_props = p
+        elif st == "about": about_props = p
+        elif st == "rooms": rooms_props = p
+        elif st == "gallery": gallery_props = p
+        elif st == "services": services_props = p
+        elif st == "testimonials": testimonials_props = p
+        elif st == "contact": contact_props = p
+        elif st == "footer": footer_props = p
+        elif st == "booking": booking_props = p
+        elif st == "banner": banners.append(p)
+
+    nav_links = [
+        (t["home"], "index.html"),
+        (t["about"], "index.html#hakkimizda"),
+        (t["rooms"], "rooms.html"),
+        (t["gallery"], "gallery.html"),
+        (t["contact"], "contact.html"),
+    ]
+    header_html = render_header(header_props, theme, lang, nav_links=nav_links)
+    footer_html = render_footer(footer_props, theme, lang)
+
+    home_body = render_hero(hero_props, theme, lang)
+    home_body += render_about(about_props, theme, lang)
+    home_body += render_services(services_props, theme, lang)
+    if booking_props:
+        home_body += render_booking(booking_props, theme, lang)
+    home_body += render_testimonials(testimonials_props, theme, lang)
+    for bp in banners:
+        home_body += render_banner(bp, theme, lang)
+
+    pages = {
+        "index.html": _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code),
+        "rooms.html": _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, f'<div style="padding-top:80px"></div>' + render_rooms(rooms_props, theme, lang), footer_html, analytics_code),
+        "gallery.html": _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, f'<div style="padding-top:80px"></div>' + render_gallery(gallery_props, theme, lang), footer_html, analytics_code),
+        "contact.html": _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, f'<div style="padding-top:80px"></div>' + render_contact(contact_props, theme, lang), footer_html, analytics_code),
+    }
+
+    # Bundle assets for all pages
+    all_assets = {}
+    bundled_pages = {}
+    for page_name, html in pages.items():
+        bundled_html, page_assets = await bundle_assets_in_html(html)
+        bundled_pages[page_name] = bundled_html
+        all_assets.update(page_assets)
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for page_name, html in bundled_pages.items():
+            zf.writestr(f"{folder}/{page_name}", html)
+        for asset_path, asset_data in all_assets.items():
+            zf.writestr(f"{folder}/{asset_path}", asset_data)
+        readme = f"""# {project_name}\n\n## Pages\n- index.html (Home)\n- rooms.html\n- gallery.html\n- contact.html\n\n## Assets\nImages have been bundled in the assets/ folder.\n\n---\nPowered by Syroce"""
+        zf.writestr(f"{folder}/README.md", readme)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+async def create_export_zip_with_assets(project_data: Dict[str, Any]) -> bytes:
+    """Create single-page export ZIP with bundled assets."""
+    html_content = generate_full_html(project_data)
+    project_name = project_data.get("name", "hotel-website").lower().replace(" ", "-")
+
+    bundled_html, assets = await bundle_assets_in_html(html_content)
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(f"{project_name}/index.html", bundled_html)
+        for asset_path, asset_data in assets.items():
+            zf.writestr(f"{project_name}/{asset_path}", asset_data)
+        readme = f"""# {project_data.get('name', 'Hotel Website')}\n\n## Setup\n1. Upload this folder to your web server\n2. Open index.html\n\n## Assets\nImages bundled in assets/ folder.\n\n---\nPowered by Syroce"""
+        zf.writestr(f"{project_name}/README.md", readme)
     buffer.seek(0)
     return buffer.getvalue()
 
