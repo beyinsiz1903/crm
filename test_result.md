@@ -282,19 +282,18 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "2.0"
-  test_sequence: 1
+  version: "2.1"
+  test_sequence: 2
   run_ui: false
 
 test_plan:
   current_focus:
-    - "Publish/unpublish live hosting endpoints"
-    - "Multi-language support"
-    - "Booking section renderer"
-    - "Analytics injection"
-    - "Asset bundling export"
+    - "Frontend drag-and-drop testing"
+    - "Frontend booking UI testing"
+    - "Frontend analytics panel testing"
+    - "Frontend publish button testing"
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
