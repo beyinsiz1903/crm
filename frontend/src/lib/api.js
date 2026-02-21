@@ -47,6 +47,13 @@ export const createVersion = (projectId) => api.post(`/projects/${projectId}/ver
 export const restoreVersion = (projectId, versionId) =>
   api.post(`/projects/${projectId}/restore/${versionId}`).then((r) => r.data);
 
+// Publish / Live Hosting
+export const publishProject = (projectId) => api.post(`/projects/${projectId}/publish`).then((r) => r.data);
+export const unpublishProject = (projectId) => api.post(`/projects/${projectId}/unpublish`).then((r) => r.data);
+
+// Languages
+export const getLanguages = () => api.get("/languages").then((r) => r.data);
+
 // Upload
 export const uploadFile = (file) => {
   const formData = new FormData();
