@@ -614,6 +614,12 @@ class CRMTester:
         print("-" * 40)
         self.run_test("Create Client with Tags and Category", self.test_create_client_enhanced)
         
+        # Domain Tests (MOCK)
+        print("\n🌐 DOMAIN MANAGEMENT TESTS (MOCK)")
+        print("-" * 40)
+        self.run_test("Create Domain", self.test_create_domain)
+        self.run_test("Verify Domain (MOCK)", self.test_verify_domain)
+        
         # Final Summary
         print("\n" + "=" * 80)
         print("📊 TEST SUMMARY")
