@@ -98,6 +98,18 @@ function SortableSectionItem({ section, idx, activeSection, setActiveSection, to
       {activeSection === section.id && (
         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="px-3 py-4 space-y-3 bg-muted/20 rounded-lg mt-1 mb-2">
           {children}
+          {section.type !== "header" && section.type !== "footer" && (
+            <button
+              onClick={() => {
+                // Find the handleSaveAsPreset from parent - it's passed via children's context
+                const event = new CustomEvent('saveAsPreset', { detail: { sectionId: section.id } });
+                window.dispatchEvent(event);
+              }}
+              className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors mt-2 pt-2 border-t border-border/50"
+            >
+              <Bookmark size={10} /> Blok olarak kaydet
+            </button>
+          )}
         </motion.div>
       )}
     </div>
