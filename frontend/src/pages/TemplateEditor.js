@@ -1046,6 +1046,74 @@ export default function TemplateEditor() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Block Library Dialog */}
+      <Dialog open={showBlockLibrary} onOpenChange={setShowBlockLibrary}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Library size={18} /> Blok Kutuphanesi</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 max-h-[400px] overflow-auto">
+            {presets.length === 0 ? (
+              <div className="text-center py-8">
+                <Library size={32} className="mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">Henuz kaydedilmis blok yok.</p>
+                <p className="text-xs text-muted-foreground mt-1">Herhangi bir section'da "Blok olarak kaydet" secenegini kullanin.</p>
+              </div>
+            ) : (
+              presets.map((preset) => (
+                <div key={preset.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">{SECTION_LABELS[preset.section_type] || preset.section_type}</Badge>
+                      <p className="text-sm font-medium truncate">{preset.name}</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{preset.category} &middot; {new Date(preset.created_at).toLocaleDateString("tr-TR")}</p>
+                  </div>
+                  <div className="flex items-center gap-1 ml-3">
+                    <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => handleAddPresetToProject(preset)} data-testid={`preset-add-${preset.id}`}>
+                      <Plus size={12} className="mr-1" /> Ekle
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeletePreset(preset.id)}>
+                      <Trash2 size={12} />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Save Section as Preset Dialog */}
+      <Dialog open={showSavePreset} onOpenChange={setShowSavePreset}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Bookmark size={18} /> Blok Olarak Kaydet</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Blok Adi</label>
+              <Input value={presetName} onChange={(e) => setPresetName(e.target.value)} data-testid="save-preset-name" placeholder="Orn: Luks Hero Banner" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Kategori</label>
+              <Select value={presetCategory} onValueChange={setPresetCategory}>
+                <SelectTrigger data-testid="save-preset-category"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["genel", "hero", "odalar", "galeri", "hizmetler", "iletisim", "banner", "rezervasyon"].map((c) => (
+                    <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowSavePreset(false)}>Iptal</Button>
+              <Button onClick={handleConfirmSavePreset} data-testid="save-preset-confirm">Kaydet</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
