@@ -401,17 +401,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Lead CRUD + scoring + stage + assign endpoints"
-    - "Pipeline stages + board endpoints"
-    - "Communications timeline endpoints"
-    - "Campaign CRUD + activate/pause (MOCK)"
-    - "Reports overview, pipeline, leads, activity endpoints"
-    - "Form CRUD + submissions endpoints"
-    - "Blog posts CRUD endpoints"
-    - "Team management + RBAC endpoints"
-    - "Client model enhanced with tags, category, custom_fields"
-    - "User model enhanced with role field"
+  current_focus: []
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
