@@ -471,6 +471,40 @@ async def restore_version(project_id: str, version_id: str):
     await log_activity("project_restored", f"Proje {version['label']} versiyonuna geri yuklendi", project_id, "project")
     return serialize_doc(updated)
 
+# ==================== SECTION PRESETS (Block Library) ====================
+
+@api_router.get("/section-presets")
+async def list_section_presets(category: Optional[str] = None, section_type: Optional[str] = None):
+    query = {}
+    if category and category != "all":
+        query["category"] = category
+    if section_type:
+        query["section_type"] = section_type
+    presets = await db.section_presets.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return serialize_list(presets)
+
+@api_router.post("/section-presets")
+async def create_section_preset(data: dict):
+    now = datetime.now(timezone.utc).isoformat()
+    preset = {
+        "id": str(uuid.uuid4()),
+        "name": data.get("name", "Isimsiz Blok"),
+        "category": data.get("category", "genel"),
+        "section_type": data.get("section_type", ""),
+        "props": data.get("props", {}),
+        "created_at": now,
+    }
+    await db.section_presets.insert_one(preset)
+    await log_activity("preset_created", f"'{preset['name']}' blok preseti olusturuldu", preset["id"], "preset")
+    return serialize_doc(preset)
+
+@api_router.delete("/section-presets/{preset_id}")
+async def delete_section_preset(preset_id: str):
+    result = await db.section_presets.delete_one({"id": preset_id})
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Preset bulunamadi")
+    return {"message": "Preset silindi"}
+
 # ==================== CLIENTS ====================
 
 @api_router.get("/clients")
