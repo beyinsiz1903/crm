@@ -327,6 +327,7 @@ export default function TemplateEditor() {
 
   const toggleSectionVisibility = (sectionId) => {
     setProject((prev) => {
+      pushUndoState(prev);
       const updated = { ...prev };
       updated.sections = prev.sections.map((s) =>
         s.id === sectionId ? { ...s, visible: !s.visible } : s
