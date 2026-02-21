@@ -75,6 +75,80 @@ export const createClient = (data) => api.post("/clients", data).then((r) => r.d
 export const updateClient = (id, data) => api.put(`/clients/${id}`, data).then((r) => r.data);
 export const deleteClient = (id) => api.delete(`/clients/${id}`).then((r) => r.data);
 
+// Leads
+export const getLeads = (params) => api.get("/leads", { params }).then((r) => r.data);
+export const getLead = (id) => api.get(`/leads/${id}`).then((r) => r.data);
+export const createLead = (data) => api.post("/leads", data).then((r) => r.data);
+export const updateLead = (id, data) => api.put(`/leads/${id}`, data).then((r) => r.data);
+export const deleteLead = (id) => api.delete(`/leads/${id}`).then((r) => r.data);
+export const updateLeadStage = (id, stage) => api.put(`/leads/${id}/stage`, { stage }).then((r) => r.data);
+export const updateLeadScore = (id, score) => api.put(`/leads/${id}/score`, { score }).then((r) => r.data);
+export const assignLead = (id, assigned_to) => api.put(`/leads/${id}/assign`, { assigned_to }).then((r) => r.data);
+
+// Pipeline
+export const getPipelineStages = () => api.get("/pipeline/stages").then((r) => r.data);
+export const getPipelineBoard = () => api.get("/pipeline/board").then((r) => r.data);
+export const createPipelineStage = (data) => api.post("/pipeline/stages", data).then((r) => r.data);
+
+// Communications
+export const getCommunications = (entity_type, entity_id) =>
+  api.get("/communications", { params: { entity_type, entity_id } }).then((r) => r.data);
+export const createCommunication = (data) => api.post("/communications", data).then((r) => r.data);
+export const deleteCommunication = (id) => api.delete(`/communications/${id}`).then((r) => r.data);
+
+// Campaigns (MOCK)
+export const getCampaigns = (status) =>
+  api.get("/campaigns", { params: status ? { status } : {} }).then((r) => r.data);
+export const getCampaign = (id) => api.get(`/campaigns/${id}`).then((r) => r.data);
+export const createCampaign = (data) => api.post("/campaigns", data).then((r) => r.data);
+export const updateCampaign = (id, data) => api.put(`/campaigns/${id}`, data).then((r) => r.data);
+export const deleteCampaign = (id) => api.delete(`/campaigns/${id}`).then((r) => r.data);
+export const activateCampaign = (id) => api.post(`/campaigns/${id}/activate`).then((r) => r.data);
+export const pauseCampaign = (id) => api.post(`/campaigns/${id}/pause`).then((r) => r.data);
+
+// Reports
+export const getReportsOverview = () => api.get("/reports/overview").then((r) => r.data);
+export const getReportsPipeline = () => api.get("/reports/pipeline").then((r) => r.data);
+export const getReportsLeads = () => api.get("/reports/leads").then((r) => r.data);
+export const getReportsActivity = (days) =>
+  api.get("/reports/activity", { params: { days } }).then((r) => r.data);
+
+// Forms
+export const getForms = (project_id) =>
+  api.get("/forms", { params: project_id ? { project_id } : {} }).then((r) => r.data);
+export const getForm = (id) => api.get(`/forms/${id}`).then((r) => r.data);
+export const createForm = (data) => api.post("/forms", data).then((r) => r.data);
+export const updateForm = (id, data) => api.put(`/forms/${id}`, data).then((r) => r.data);
+export const deleteForm = (id) => api.delete(`/forms/${id}`).then((r) => r.data);
+export const getFormSubmissions = (id) => api.get(`/forms/${id}/submissions`).then((r) => r.data);
+
+// Blog
+export const getBlogPosts = (params) => api.get("/blog/posts", { params }).then((r) => r.data);
+export const getBlogPost = (id) => api.get(`/blog/posts/${id}`).then((r) => r.data);
+export const createBlogPost = (data) => api.post("/blog/posts", data).then((r) => r.data);
+export const updateBlogPost = (id, data) => api.put(`/blog/posts/${id}`, data).then((r) => r.data);
+export const deleteBlogPost = (id) => api.delete(`/blog/posts/${id}`).then((r) => r.data);
+
+// Domains (MOCK)
+export const getDomains = (project_id) =>
+  api.get("/domains", { params: project_id ? { project_id } : {} }).then((r) => r.data);
+export const createDomain = (data) => api.post("/domains", data).then((r) => r.data);
+export const deleteDomain = (id) => api.delete(`/domains/${id}`).then((r) => r.data);
+export const verifyDomain = (id) => api.post(`/domains/${id}/verify`).then((r) => r.data);
+
+// Team
+export const getTeam = () => api.get("/team").then((r) => r.data);
+export const inviteTeamMember = (data) => api.post("/team/invite", data).then((r) => r.data);
+export const updateTeamRole = (userId, role) => api.put(`/team/${userId}/role`, { role }).then((r) => r.data);
+export const removeTeamMember = (userId) => api.delete(`/team/${userId}`).then((r) => r.data);
+
+// Activity Log
+export const getActivityLog = (params) => api.get("/activity-log", { params }).then((r) => r.data);
+
+// Segments
+export const getSegmentTags = () => api.get("/segments/tags").then((r) => r.data);
+export const getSegmentCategories = () => api.get("/segments/categories").then((r) => r.data);
+
 // Dashboard
 export const getDashboardStats = () => api.get("/dashboard/stats").then((r) => r.data);
 export const getActivity = (limit = 20) =>
