@@ -398,19 +398,26 @@ metadata:
   created_by: "main_agent"
   version: "3.0"
   test_sequence: 5
-  run_ui: false
+  run_ui: true
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Leads page with scoring, filtering, timeline"
+    - "Pipeline Kanban board with drag-drop"
+    - "Campaigns page (MOCK email)"
+    - "Reports dashboard with charts"
+    - "Form Builder page"
+    - "Blog management page"
+    - "Team management + Activity log page"
+    - "Enhanced Sidebar with grouped sections"
+    - "Client segmentation (tags, category, timeline)"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
 
 agent_communication:
     - agent: "main"
-    - message: "V3.0 CRM guncelleme tamamlandi. Yeni backend route dosyalari: crm_routes.py (leads, pipeline, communications, campaigns, reports), content_routes.py (forms, blog, domains), team_routes.py (team, rbac, activity log). Yeni frontend sayfalari: Leads, Pipeline, Campaigns, Reports, FormBuilder, Blog, Team. Sidebar yeni bolumlerle guncellendi. Client modeli tags/category/custom_fields destegi eklendi. User modeli role alani eklendi. Tum yeni backend endpointleri test edilmeli. Auth icin register ile yeni kullanici olusturun, ilk kullanici admin olur."
-    - agent: "testing"
-    - message: "🎯 COMPREHENSIVE CRM v3.0 BACKEND TESTING COMPLETED - 100% SUCCESS RATE! Executed 30 comprehensive tests covering all new CRM endpoints. ✅ ALL BACKEND ENDPOINTS WORKING CORRECTLY: Authentication (register/login/me with role support), Lead CRUD with auto-scoring, Pipeline stages with Kanban board, Communications timeline, Campaigns with MOCK activation/pause, All 4 Reports endpoints, Forms with public submission, Blog CRUD with slug generation, Team management with RBAC, Enhanced client model (tags/category/custom_fields), Enhanced user model with roles, Domain management (MOCK), Segments endpoints, Activity log. Key findings: Auto-scoring algorithm working (email+phone+company+referral=50pts), Pipeline auto-seeds 7 stages correctly, Campaign MOCK stats generation functional, RBAC properly enforced (admin-only endpoints), Public form submission works without auth, All report aggregations returning proper data structures. READY FOR PRODUCTION - No critical issues found."
+    - message: "Frontend test istendi. Tum yeni sayfalar test edilmeli: Leads, Pipeline, Campaigns, Reports, FormBuilder, Blog, Team. Sidebar'da yeni bolumler kontrol edilmeli. Login icin kayit olun (ilk kullanici admin olur). Backend 30/30 test gecti. Frontend URL: http://localhost:3000"
 
   - task: "Undo/Redo functionality (Ctrl+Z / Ctrl+Y)"
     implemented: true
