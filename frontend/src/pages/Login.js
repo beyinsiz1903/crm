@@ -29,6 +29,7 @@ export default function Login({ mode: initialMode, onSuccess }) {
         result = await login({ email: form.email, password: form.password });
       }
       localStorage.setItem("syroce_token", result.token);
+      if (result.user) localStorage.setItem("syroce_user", JSON.stringify(result.user));
       onSuccess?.();
     } catch (err) {
       setError(err.response?.data?.detail || "Bir hata olustu");
