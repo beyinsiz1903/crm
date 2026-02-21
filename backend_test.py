@@ -379,6 +379,34 @@ class CRMTester:
         
         return response
     
+    def test_reports_leads(self):
+        """Test leads report endpoint"""
+        response = self.make_request("GET", "/reports/leads")
+        
+        if not isinstance(response, dict):
+            raise Exception("Expected leads report object")
+        
+        required_sections = ["monthly_trend", "source_data", "score_distribution"]
+        for section in required_sections:
+            if section not in response:
+                raise Exception(f"Missing section in leads report: {section}")
+        
+        return response
+    
+    def test_reports_activity(self):
+        """Test activity report endpoint"""
+        response = self.make_request("GET", "/reports/activity")
+        
+        if not isinstance(response, dict):
+            raise Exception("Expected activity report object")
+        
+        required_fields = ["total", "by_type", "daily", "recent"]
+        for field in required_fields:
+            if field not in response:
+                raise Exception(f"Missing field in activity report: {field}")
+        
+        return response
+    
     # ==================== FORMS TESTS ====================
     
     def test_create_form(self):
