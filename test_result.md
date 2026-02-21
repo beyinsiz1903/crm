@@ -102,204 +102,261 @@
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
 
-user_problem_statement: "Syroce CRM otel web sitesi uretim aracinda 8 eksik ozellik tamamlanacak: 1) Canli hosting, 2) Drag-and-drop editor, 3) Booking engine/rezervasyon widget, 4) Analytics/performans izleme, 5) Otomatik deployment/yayinlama, 6) Responsive editor, 7) Coklu dil (10 dil), 8) Asset bundling"
+user_problem_statement: "Syroce CRM v3.0 - Tam CRM ozellikleri (Lead yonetimi, Pipeline, Email Otomasyon, Iletisim gecmisi, Segmentasyon, Raporlama), Web sitesi uretici gelistirme (Form builder, Blog, Domain, Analytics), Coklu kullanici ve RBAC"
 
 backend:
-  - task: "Multi-language support (10 dil: TR, EN, DE, FR, ES, IT, RU, AR, JA, ZH)"
+  - task: "Lead CRUD + scoring + stage + assign endpoints"
     implemented: true
     working: true
-    file: "backend/export_service.py"
+    file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "10 dil icin TRANSLATIONS sozlugu ve /api/languages endpoint eklendi"
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - GET /api/languages returns all 10 languages (tr,en,de,fr,es,it,ru,ar,ja,zh) with proper structure (name,native,flag). Endpoint fully functional."
+        - comment: "GET/POST/PUT/DELETE /api/leads, PUT /api/leads/{id}/stage, PUT /api/leads/{id}/score, PUT /api/leads/{id}/assign endpoints implemented. Auto-scoring on creation."
 
-  - task: "Asset bundling in export (harici gorselleri ZIP icine dahil etme)"
+  - task: "Pipeline stages + board endpoints"
     implemented: true
     working: true
-    file: "backend/export_service.py"
+    file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "create_export_zip_with_assets ve create_multipage_export_zip_with_assets fonksiyonlari eklendi. httpx ile async image download."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Asset bundling working correctly. Export with bundle_assets=true successfully downloads external images and includes them in ZIP. Tested both single and multipage export modes."
+        - comment: "GET /api/pipeline/stages, GET /api/pipeline/board, POST/PUT/DELETE /api/pipeline/stages. Auto-seeds 7 default stages."
 
-  - task: "Analytics tracking code injection (GA + custom head code)"
+  - task: "Communications timeline endpoints"
     implemented: true
     working: true
-    file: "backend/export_service.py"
+    file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "_get_analytics_code fonksiyonu eklendi. Project modeline analytics alani eklendi."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Analytics injection fully working. GA ID (G-TEST123456) and custom head code properly injected into exported HTML. Both Google Analytics gtag script and custom tracking code found in export."
+        - comment: "GET /api/communications, POST /api/communications, DELETE /api/communications/{id}. Auto-increases lead score by 5 per communication."
 
-  - task: "Booking/reservation widget section renderer"
+  - task: "Campaign CRUD + activate/pause (MOCK)"
     implemented: true
     working: true
-    file: "backend/export_service.py"
+    file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "render_booking fonksiyonu eklendi. Yerlesik form + harici widget embed destegi."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Booking section renderer working perfectly. Test booking section with title, phone, email, room types properly rendered in preview HTML. All booking form elements present."
+        - comment: "GET/POST/PUT/DELETE /api/campaigns, POST /api/campaigns/{id}/activate, POST /api/campaigns/{id}/pause. Mock stats on activate."
 
-  - task: "Publish/unpublish live hosting endpoints"
+  - task: "Reports overview, pipeline, leads, activity endpoints"
     implemented: true
     working: true
-    file: "backend/server.py"
+    file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "POST /api/projects/{id}/publish, POST /api/projects/{id}/unpublish, GET /api/hosted/{id} endpoints eklendi."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Publish/unpublish fully functional. Published project returns valid HTML (20KB+), unpublished project correctly returns 403. Live hosting workflow complete."
+        - comment: "GET /api/reports/overview, /api/reports/pipeline, /api/reports/leads, /api/reports/activity. Aggregation queries for conversion rate, score distribution, monthly trend."
 
-  - task: "Updated export endpoint with asset bundling support"
+  - task: "Form CRUD + submissions endpoints"
     implemented: true
     working: true
-    file: "backend/server.py"
+    file: "backend/content_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Export endpoint bundle_assets flag'ine gore async asset bundling yapabiliyor."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Export endpoint with asset bundling support working correctly. Project fields (analytics, bundle_assets, language) all update and persist correctly. Export generates proper ZIP files."
+        - comment: "GET/POST/PUT/DELETE /api/forms, GET /api/forms/{id}/submissions, POST /api/forms/{id}/submit (public)."
 
-frontend:
-  - task: "Drag-and-drop section reordering (@dnd-kit)"
+  - task: "Blog posts CRUD endpoints"
     implemented: true
     working: true
-    file: "frontend/src/pages/TemplateEditor.js"
+    file: "backend/content_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "@dnd-kit/core, @dnd-kit/sortable entegrasyonu. SortableSectionItem component."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Code review confirmed full @dnd-kit integration. SortableSectionItem component properly wraps sections with drag handles (GripVertical icon), DndContext configured with sensors, arrayMove on handleDragEnd. Visual verification shows grip handles present. Full drag testing skipped due to system limitations."
+        - comment: "GET/POST/PUT/DELETE /api/blog/posts. Auto slug generation, author tracking."
 
-  - task: "Booking section editor UI"
+  - task: "Domain management endpoints (MOCK)"
     implemented: true
     working: true
-    file: "frontend/src/pages/TemplateEditor.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "Booking section formu: baslik, telefon, email, oda tipleri, widget kodu. previewRenderer da booking render."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Booking section complete. 'Rezervasyon' button adds booking section with full form (title, subtitle, phone, email, roomTypes, widgetCode). All fields have proper data-testid attributes. Preview renderer includes booking section HTML generation with both native form and external widget support."
-
-  - task: "10 dil destegi UI (dil secimi dropdown)"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/TemplateEditor.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "10 dil dropdown (TR, EN, DE, FR, ES, IT, RU, AR, JA, ZH). previewRenderer.js de 10 dil ceviri."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - 10 language support fully functional. Language dropdown (Globe icon, data-testid='editor-language-toggle') includes all 10 languages: TR, EN, DE, FR, ES, IT, RU, AR, JA, ZH with native names and flag codes. TRANSLATIONS object in previewRenderer.js contains complete translations for all languages. Preview updates correctly on language change."
-
-  - task: "Analytics panel (GA ID + custom tracking code)"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/TemplateEditor.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "SEO tabinda Analytics & Izleme bolumu: GA ID, ozel kod alani."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Analytics panel working. SEO tab contains 'Analytics & Izleme' section with GA ID input (data-testid='editor-analytics-ga-id') and custom tracking code textarea (data-testid='editor-analytics-custom-code'). Both fields properly update project.analytics via updateAnalytics function with auto-save."
-
-  - task: "Publish/unpublish button + live URL"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/TemplateEditor.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "Yayinla butonu, Canli siteyi ac link, durum gostergesi. publishProject/unpublishProject API cagrilari."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Publish functionality complete. Publish button (data-testid='editor-publish-button') shows 'Yayinla'/'Yayinda' state with green color when published. Calls publishProject/unpublishProject API endpoints. External link button (data-testid='editor-open-hosted') appears when published, opens live URL in new tab. Settings tab shows publish status indicator."
-
-  - task: "Asset bundling toggle in settings"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/TemplateEditor.js"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "Ayarlar tabinda asset bundling toggle. bundle_assets alani project'e eklendi."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Asset bundling toggle working. Settings tab contains toggle (data-testid='editor-settings-bundle-assets') with visual state indicator showing 'Aktif'/'Kapali'. Clicking toggles project.bundle_assets field with auto-save via updateBundleAssets function. Integrates with backend export API."
-
-  - task: "Responsive editor improvements"
-    implemented: true
-    working: true
-    file: "frontend/src/pages/TemplateEditor.js"
+    file: "backend/content_routes.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Cihaz moduna gore responsive hint mesajlari ve tema panelinde mod gostergesi."
+        - comment: "GET/POST/DELETE /api/domains, POST /api/domains/{id}/verify. Mock DNS records and verification."
+
+  - task: "Team management + RBAC endpoints"
+    implemented: true
+    working: true
+    file: "backend/team_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "GET /api/team, POST /api/team/invite, PUT /api/team/{id}/role, DELETE /api/team/{id}. Role-based access control. First user auto-admin."
+
+  - task: "Enhanced activity log + segments endpoints"
+    implemented: true
+    working: true
+    file: "backend/team_routes.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "GET /api/activity-log with filters, GET /api/segments/tags, GET /api/segments/categories. Activity log now includes user_id."
+
+  - task: "Client model enhanced with tags, category, custom_fields"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "ClientCreate/ClientUpdate models updated with tags, category, custom_fields. Client create endpoint ensures defaults."
+
+  - task: "User model enhanced with role field"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Register adds role (first user=admin). Login/me returns role. JWT includes role."
+
+frontend:
+  - task: "Leads page with scoring, filtering, timeline"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Leads.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
         - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Responsive editor fully functional. Device mode buttons (desktop/tablet/mobile with data-testid='editor-device-{mode}') toggle deviceMode state. Preview iframe changes size based on mode. Responsive hints appear in Theme tab and section forms when deviceMode !== 'desktop', showing tablet/mobile-specific messaging."
+        - agent: "main"
+        - comment: "Lead table with search, stage/source filters, score display, tags. Create/edit dialog. Detail dialog with communication timeline."
+
+  - task: "Pipeline Kanban board with drag-drop"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Pipeline.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "7-column Kanban board using @dnd-kit. Color-coded stages. Lead cards with score, company, tags."
+
+  - task: "Campaigns page (MOCK email)"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Campaigns.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Campaign cards with status, stats. Create/edit with drip steps. Activate/pause actions. MOCK warning banner."
+
+  - task: "Reports dashboard with charts"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Reports.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "8 KPI cards, Pipeline bar chart, Source pie chart, Monthly line chart, Score bar chart, Daily activity chart. All using recharts."
+
+  - task: "Form Builder page"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/FormBuilder.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Form cards, create/edit dialog with field builder (8 field types, required toggle). Submissions viewer."
+
+  - task: "Blog management page"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Blog.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Blog post cards with cover image, tags, status. Create/edit with rich form. Publish/draft toggle."
+
+  - task: "Team management + Activity log page"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Team.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Team tab with role dropdowns, invite dialog with temp password. Activity log tab with emoji icons and timestamps."
+
+  - task: "Enhanced Sidebar with grouped sections"
+    implemented: true
+    working: true
+    file: "frontend/src/components/Sidebar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "4 sections (CRM, Projeler, Pazarlama, Yonetim) with collapsible groups. 11 total nav items."
+
+  - task: "Client segmentation (tags, category, timeline)"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Clients.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Category filter, tags display in table, detail dialog with communication timeline."
 
 metadata:
   created_by: "main_agent"
