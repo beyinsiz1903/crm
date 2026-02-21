@@ -344,6 +344,7 @@ export default function TemplateEditor() {
     if (!over || active.id === over.id) return;
 
     setProject((prev) => {
+      pushUndoState(prev);
       const oldIndex = prev.sections.findIndex((s) => s.id === active.id);
       const newIndex = prev.sections.findIndex((s) => s.id === over.id);
       const newSections = arrayMove(prev.sections, oldIndex, newIndex);
