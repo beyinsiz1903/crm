@@ -137,16 +137,25 @@ export default function Clients() {
         </Button>
       </PageHeader>
 
-      {/* Search */}
-      <div className="relative max-w-xs mb-6">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Musteri ara..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-          data-testid="clients-search-input"
-        />
+      {/* Search + Filter */}
+      <div className="flex gap-3 mb-6">
+        <div className="relative flex-1 max-w-xs">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Musteri ara..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+            data-testid="clients-search-input"
+          />
+        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[150px]"><SelectValue placeholder="Kategori" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tum Kategoriler</SelectItem>
+            {CATEGORIES.filter(Boolean).map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Clients Table */}
