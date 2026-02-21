@@ -54,6 +54,12 @@ export const unpublishProject = (projectId) => api.post(`/projects/${projectId}/
 // Languages
 export const getLanguages = () => api.get("/languages").then((r) => r.data);
 
+// Section Presets (Block Library)
+export const getSectionPresets = (category, sectionType) =>
+  api.get("/section-presets", { params: { ...(category ? { category } : {}), ...(sectionType ? { section_type: sectionType } : {}) } }).then((r) => r.data);
+export const createSectionPreset = (data) => api.post("/section-presets", data).then((r) => r.data);
+export const deleteSectionPreset = (id) => api.delete(`/section-presets/${id}`).then((r) => r.data);
+
 // Upload
 export const uploadFile = (file) => {
   const formData = new FormData();
