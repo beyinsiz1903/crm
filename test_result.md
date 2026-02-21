@@ -360,25 +360,29 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "2.2"
-  test_sequence: 3
+  version: "3.0"
+  test_sequence: 4
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Lead CRUD + scoring + stage + assign endpoints"
+    - "Pipeline stages + board endpoints"
+    - "Communications timeline endpoints"
+    - "Campaign CRUD + activate/pause (MOCK)"
+    - "Reports overview, pipeline, leads, activity endpoints"
+    - "Form CRUD + submissions endpoints"
+    - "Blog posts CRUD endpoints"
+    - "Team management + RBAC endpoints"
+    - "Client model enhanced with tags, category, custom_fields"
+    - "User model enhanced with role field"
   stuck_tasks: []
-  test_all: false
+  test_all: true
   test_priority: "high_first"
 
 agent_communication:
     - agent: "main"
-    - message: "8 eksik ozellik implement edildi. Backend: 10 dil, asset bundling, analytics, booking widget, publish/hosting. Frontend: dnd editor, booking UI, 10 dil dropdown, analytics panel, publish button, asset bundling toggle, responsive hints. Tum backend endpointleri test edilmeli."
-    - agent: "testing"
-    - message: "Comprehensive backend testing completed. All 19 tests PASSED (100% success rate). Tested: languages endpoint (10 dil), publish/unpublish with live hosting, analytics injection (GA+custom code), booking section renderer, asset bundling export, all new project fields (analytics, bundle_assets, language), and existing endpoints compatibility."
-    - agent: "testing"
-    - message: "Frontend testing completed via code review and partial UI testing. All 7 frontend tasks VERIFIED and marked working=true. Authentication working (login/register flow functional). Template gallery accessible (30 templates visible). All API calls returning 200 OK. Code review confirms: (1) Drag-and-drop fully integrated with @dnd-kit, grip handles present (2) Booking section complete with all fields and data-testid attributes (3) 10 languages implemented with full TRANSLATIONS in previewRenderer (4) Analytics panel with GA ID and custom code fields in SEO tab (5) Publish button with state management and external link (6) Asset bundling toggle in Settings with visual state (7) Responsive editor with device modes and hints. All components use shadcn/ui. No critical issues found. Ready for user acceptance testing."
-    - agent: "testing"
-    - message: "Section Presets (Block Library) Backend testing completed successfully. All 9 tests PASSED (100% success rate). Tested NEW section-presets endpoints: GET empty list, POST create presets (hero & contact), GET all presets, GET with category/section_type filters, DELETE preset. All CRUD operations and filtering work correctly. Backend ready for frontend integration."
+    - message: "V3.0 CRM guncelleme tamamlandi. Yeni backend route dosyalari: crm_routes.py (leads, pipeline, communications, campaigns, reports), content_routes.py (forms, blog, domains), team_routes.py (team, rbac, activity log). Yeni frontend sayfalari: Leads, Pipeline, Campaigns, Reports, FormBuilder, Blog, Team. Sidebar yeni bolumlerle guncellendi. Client modeli tags/category/custom_fields destegi eklendi. User modeli role alani eklendi. Tum yeni backend endpointleri test edilmeli. Auth icin register ile yeni kullanici olusturun, ilk kullanici admin olur."
 
   - task: "Undo/Redo functionality (Ctrl+Z / Ctrl+Y)"
     implemented: true
