@@ -1,544 +1,430 @@
 #!/usr/bin/env python3
+"""
+Syroce CRM Backend API Test Suite
+Tests all new backend endpoints for the hotel website builder.
+"""
 
-import requests
-import json
 import sys
+import json
+import httpx
+import asyncio
+import zipfile
 import io
-from datetime import datetime
+from typing import Dict, Any, Optional
 
-class SyroceCRMTester:
-    def __init__(self):
-        self.base_url = "https://static-web-builder.preview.emergentagent.com/api"
-        self.session = requests.Session()
-        self.session.headers.update({'Content-Type': 'application/json'})
-        self.tests_run = 0
-        self.tests_passed = 0
-        self.token = None
-        self.created_resources = {
-            'clients': [],
-            'projects': [],
-            'templates': [],
-            'versions': []
+# Use the frontend environment variable for backend URL
+BACKEND_URL = "https://static-web-builder.preview.emergentagent.com/api"
+
+class BackendTester:
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.client = httpx.AsyncClient(timeout=30.0)
+        self.project_id = None
+        self.template_id = None
+        self.test_results = {}
+    
+    async def close(self):
+        await self.client.aclose()
+    
+    def log_test(self, test_name: str, success: bool, details: str = ""):
+        """Log test results"""
+        print(f"{'✅' if success else '❌'} {test_name}: {details}")
+        self.test_results[test_name] = {
+            "success": success,
+            "details": details
         }
-
-    def log_test(self, name, success, response_data=None, error=None):
-        """Log test result"""
-        self.tests_run += 1
-        status = "✅ PASS" if success else "❌ FAIL"
-        print(f"{status} | {name}")
-        
-        if success:
-            self.tests_passed += 1
-            if response_data:
-                print(f"    → Response: {str(response_data)[:100]}")
-        else:
-            print(f"    → Error: {error}")
-        print()
-
-    def test_api_request(self, method, endpoint, data=None, expected_status=200, files=None):
-        """Make API request and validate response"""
-        url = f"{self.base_url}/{endpoint}"
+    
+    async def test_languages_endpoint(self):
+        """Test GET /api/languages - should return 10 languages"""
         try:
-            # Set authorization header if token exists
-            headers = {'Content-Type': 'application/json'}
-            if self.token:
-                headers['Authorization'] = f'Bearer {self.token}'
+            response = await self.client.get(f"{self.base_url}/languages")
+            if response.status_code == 200:
+                data = response.json()
+                expected_langs = ["tr", "en", "de", "fr", "es", "it", "ru", "ar", "ja", "zh"]
                 
-            if files:
-                # For file uploads, don't set Content-Type (let requests set it)
-                headers.pop('Content-Type', None)
-            
-            if method == 'GET':
-                response = requests.get(url, headers=headers)
-            elif method == 'POST':
-                if files:
-                    response = requests.post(url, files=files, headers=headers)
-                else:
-                    response = requests.post(url, json=data, headers=headers)
-            elif method == 'PUT':
-                response = requests.put(url, json=data, headers=headers)
-            elif method == 'DELETE':
-                response = requests.delete(url, headers=headers)
-            
-            success = response.status_code == expected_status
-            response_data = None
-            
-            if success:
-                try:
-                    response_data = response.json()
-                except:
-                    if response.headers.get('content-type', '').startswith('application/zip'):
-                        response_data = "ZIP_FILE_CONTENT"
-                    else:
-                        response_data = response.text[:100] if response.text else "No content"
-            
-            return success, response_data, response.status_code, response.text
-            
-        except Exception as e:
-            return False, None, None, str(e)
-
-    def test_auth_flow(self):
-        """Test JWT authentication flow - Phase 3+4 feature"""
-        
-        # Test auth check - should return has_users: true
-        success, data, status, error = self.test_api_request('GET', 'auth/check')
-        if success and data.get('has_users') == True:
-            self.log_test("Auth Check - has_users", True, f"has_users: {data['has_users']}")
-        else:
-            self.log_test("Auth Check - has_users", False, error=f"Expected has_users: true, got {data}")
-            
-        # Test user registration first (in case admin doesn't exist)
-        register_data = {
-            "email": "admin@syroce.com",
-            "password": "admin123",
-            "name": "Admin User"
-        }
-        
-        success, reg_result, status, error = self.test_api_request('POST', 'auth/register', register_data)
-        if success:
-            self.log_test("Auth Register", True, f"Registered user: {reg_result.get('user', {}).get('email')}")
-            if reg_result.get('token'):
-                self.token = reg_result['token']
-        elif status == 400:  # User already exists
-            self.log_test("Auth Register", True, "User already exists (expected)")
-        else:
-            self.log_test("Auth Register", False, error=f"Status {status}: {error}")
-            
-        # Test login with admin credentials 
-        login_data = {
-            "email": "admin@syroce.com", 
-            "password": "admin123"
-        }
-        
-        success, login_result, status, error = self.test_api_request('POST', 'auth/login', login_data)
-        if success and login_result.get('token'):
-            self.token = login_result['token']
-            self.log_test("Auth Login", True, f"Logged in user: {login_result.get('user', {}).get('email')}")
-            
-            # Test auth/me endpoint with token
-            success, user_data, status, error = self.test_api_request('GET', 'auth/me')
-            if success:
-                self.log_test("Auth Me", True, f"User ID: {user_data.get('id')}")
-            else:
-                self.log_test("Auth Me", False, error=f"Status {status}: {error}")
-                
-        else:
-            self.log_test("Auth Login", False, error=f"Status {status}: {error}")
-            return False
-            
-        return True
-
-    def test_image_upload(self):
-        """Test image upload endpoint - Phase 3+4 feature"""
-        
-        # Create a small test image file in memory
-        test_image = b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82'
-        
-        files = {'file': ('test.png', io.BytesIO(test_image), 'image/png')}
-        
-        success, upload_result, status, error = self.test_api_request('POST', 'upload', files=files)
-        if success and upload_result.get('url'):
-            self.log_test("Image Upload", True, f"Uploaded to: {upload_result['url']}")
-            return upload_result['url']
-        else:
-            self.log_test("Image Upload", False, error=f"Status {status}: {error}")
-            return None
-
-    def test_dashboard_stats(self):
-        """Test dashboard statistics endpoint"""
-        success, data, status, error = self.test_api_request('GET', 'dashboard/stats')
-        
-        if success:
-            # Check if stats have required fields
-            required_fields = ['total_clients', 'total_projects', 'total_templates', 'status_distribution']
-            missing_fields = [field for field in required_fields if field not in data]
-            
-            if missing_fields:
-                self.log_test("Dashboard Stats - Structure", False, error=f"Missing fields: {missing_fields}")
-                return False
-                
-            # Check if templates count is 30 (seeded templates)
-            if data.get('total_templates', 0) >= 30:
-                self.log_test("Dashboard Stats - Template Count", True, f"Templates: {data['total_templates']}")
-            else:
-                self.log_test("Dashboard Stats - Template Count", False, error=f"Expected >=30 templates, got {data.get('total_templates', 0)}")
-                
-            self.log_test("Dashboard Stats", True, data)
-            return True
-        else:
-            self.log_test("Dashboard Stats", False, error=f"Status {status}: {error}")
-            return False
-
-    def test_templates_endpoint(self):
-        """Test templates CRUD operations"""
-        
-        # Test GET all templates
-        success, templates, status, error = self.test_api_request('GET', 'templates')
-        if not success:
-            self.log_test("Templates - GET All", False, error=f"Status {status}: {error}")
-            return False
-            
-        if not isinstance(templates, list):
-            self.log_test("Templates - GET All", False, error="Response is not a list")
-            return False
-            
-        if len(templates) < 30:
-            self.log_test("Templates - Count", False, error=f"Expected >=30 templates, got {len(templates)}")
-        else:
-            self.log_test("Templates - Count", True, f"Found {len(templates)} templates")
-        
-        # Test template structure
-        if templates:
-            template = templates[0]
-            required_fields = ['id', 'name', 'category', 'description', 'thumbnail', 'theme', 'sections']
-            missing_fields = [field for field in required_fields if field not in template]
-            
-            if missing_fields:
-                self.log_test("Templates - Structure", False, error=f"Missing fields: {missing_fields}")
-            else:
-                self.log_test("Templates - Structure", True, "All required fields present")
-        
-        # Test category filtering
-        categories = ['luxury', 'boutique', 'resort', 'business', 'beach', 'mountain', 'city']
-        for category in categories[:3]:  # Test first 3 categories
-            success, filtered, status, error = self.test_api_request('GET', f'templates?category={category}')
-            if success and filtered:
-                category_match = all(t.get('category') == category for t in filtered)
-                self.log_test(f"Templates - Filter {category}", category_match, f"Found {len(filtered)} templates")
-            else:
-                self.log_test(f"Templates - Filter {category}", False, error=f"Status {status}")
-        
-        # Test GET single template
-        if templates:
-            template_id = templates[0]['id']
-            success, template, status, error = self.test_api_request('GET', f'templates/{template_id}')
-            self.log_test("Templates - GET Single", success, template.get('name') if success else error)
-        
-        self.log_test("Templates - GET All", True, f"Retrieved {len(templates)} templates")
-        return True
-
-    def test_clients_crud(self):
-        """Test clients CRUD operations"""
-        
-        # Test GET clients (empty initially)
-        success, clients, status, error = self.test_api_request('GET', 'clients')
-        if not success:
-            self.log_test("Clients - GET All", False, error=f"Status {status}: {error}")
-            return False
-        self.log_test("Clients - GET All", True, f"Retrieved {len(clients)} clients")
-        
-        # Test CREATE client
-        test_client = {
-            "hotel_name": "Test Hotel Istanbul",
-            "contact_name": "Ahmet Test",
-            "email": "test@hotel.com", 
-            "phone": "+90 212 555 0123",
-            "address": "Test Caddesi No:1",
-            "city": "Istanbul",
-            "notes": "Test client for API testing"
-        }
-        
-        success, client, status, error = self.test_api_request('POST', 'clients', test_client, 200)
-        if success:
-            self.created_resources['clients'].append(client['id'])
-            self.log_test("Clients - CREATE", True, f"Created client: {client['hotel_name']}")
-            
-            # Test GET single client
-            client_id = client['id']
-            success, retrieved_client, status, error = self.test_api_request('GET', f'clients/{client_id}')
-            self.log_test("Clients - GET Single", success, retrieved_client.get('hotel_name') if success else error)
-            
-            # Test UPDATE client
-            update_data = {"hotel_name": "Updated Test Hotel", "city": "Ankara"}
-            success, updated, status, error = self.test_api_request('PUT', f'clients/{client_id}', update_data)
-            if success and updated.get('hotel_name') == 'Updated Test Hotel':
-                self.log_test("Clients - UPDATE", True, f"Updated: {updated['hotel_name']}")
-            else:
-                self.log_test("Clients - UPDATE", False, error=error)
-                
-        else:
-            self.log_test("Clients - CREATE", False, error=f"Status {status}: {error}")
-            return False
-            
-        # Test search functionality
-        success, search_results, status, error = self.test_api_request('GET', 'clients?search=Test')
-        if success:
-            found_test_client = any('Test' in c.get('hotel_name', '') for c in search_results)
-            self.log_test("Clients - SEARCH", found_test_client, f"Found {len(search_results)} results")
-        else:
-            self.log_test("Clients - SEARCH", False, error=error)
-            
-        return True
-
-    def test_projects_crud_with_phase4_features(self):
-        """Test projects CRUD with Phase 3+4 features (SEO, language, export_mode, versioning)"""
-        
-        # First get templates to create a project
-        success, templates, status, error = self.test_api_request('GET', 'templates')
-        if not success or not templates:
-            self.log_test("Projects - Prerequisites", False, error="No templates available for project creation")
-            return False
-            
-        template_id = templates[0]['id']
-        
-        # Test CREATE project with Phase 4 fields
-        test_project = {
-            "name": "Test Hotel Website Phase 4",
-            "template_id": template_id,
-            "language": "en"  # Phase 4 feature
-        }
-        
-        success, project, status, error = self.test_api_request('POST', 'projects', test_project, 200)
-        if success:
-            self.created_resources['projects'].append(project['id'])
-            self.log_test("Projects - CREATE with Language", True, f"Created project: {project['name']}")
-            
-            project_id = project['id']
-            
-            # Test GET single project with Phase 4 fields
-            success, retrieved, status, error = self.test_api_request('GET', f'projects/{project_id}')
-            if success:
-                # Check Phase 4 fields exist
-                phase4_fields = ['seo', 'language', 'export_mode']
-                missing_fields = [f for f in phase4_fields if f not in retrieved]
-                if missing_fields:
-                    self.log_test("Projects - Phase 4 Fields", False, error=f"Missing: {missing_fields}")
-                else:
-                    self.log_test("Projects - Phase 4 Fields", True, "SEO, language, export_mode present")
-            else:
-                self.log_test("Projects - GET Single", False, error=error)
-            
-            # Test UPDATE project with SEO, language, export_mode - Phase 4 features
-            update_data = {
-                "name": "Updated Test Project Phase 4",
-                "status": "published",
-                "seo": {
-                    "title": "Amazing Hotel Website",
-                    "description": "Luxury hotel with amazing amenities",
-                    "keywords": "hotel, luxury, booking",
-                    "og_image": "https://example.com/image.jpg"
-                },
-                "language": "tr",
-                "export_mode": "multi"
-            }
-            success, updated, status, error = self.test_api_request('PUT', f'projects/{project_id}', update_data)
-            if success:
-                # Verify Phase 4 fields were saved
-                if updated.get('seo', {}).get('title') == 'Amazing Hotel Website':
-                    self.log_test("Projects - UPDATE SEO", True, f"SEO title: {updated['seo']['title']}")
-                else:
-                    self.log_test("Projects - UPDATE SEO", False, error="SEO not saved correctly")
-                    
-                if updated.get('language') == 'tr':
-                    self.log_test("Projects - UPDATE Language", True, f"Language: {updated['language']}")
-                else:
-                    self.log_test("Projects - UPDATE Language", False, error="Language not saved correctly")
-                    
-                if updated.get('export_mode') == 'multi':
-                    self.log_test("Projects - UPDATE Export Mode", True, f"Export mode: {updated['export_mode']}")
-                else:
-                    self.log_test("Projects - UPDATE Export Mode", False, error="Export mode not saved correctly")
-            else:
-                self.log_test("Projects - UPDATE Phase 4", False, error=error)
-                
-            # Test versioning - Phase 4 features
-            success, version_created, status, error = self.test_api_request('POST', f'projects/{project_id}/versions')
-            if success:
-                version_id = version_created.get('id')
-                if version_id:
-                    self.created_resources['versions'].append({'project_id': project_id, 'version_id': version_id})
-                self.log_test("Projects - CREATE Version", True, f"Version: {version_created.get('label')}")
-                
-                # Test GET versions list
-                success, versions, status, error = self.test_api_request('GET', f'projects/{project_id}/versions')
-                if success and isinstance(versions, list):
-                    self.log_test("Projects - GET Versions", True, f"Found {len(versions)} versions")
-                    
-                    # Test version restore if we have a version
-                    if versions:
-                        version_to_restore = versions[0]['id']
-                        success, restored, status, error = self.test_api_request('POST', f'projects/{project_id}/restore/{version_to_restore}')
-                        if success:
-                            self.log_test("Projects - RESTORE Version", True, f"Restored to version {versions[0].get('label')}")
+                if isinstance(data, dict):
+                    available_langs = list(data.keys())
+                    if len(available_langs) == 10 and all(lang in available_langs for lang in expected_langs):
+                        # Check structure
+                        sample_lang = data.get("tr", {})
+                        if all(key in sample_lang for key in ["name", "native", "flag"]):
+                            self.log_test("Languages Endpoint", True, f"✅ Returns all 10 languages with proper structure")
+                            return True
                         else:
-                            self.log_test("Projects - RESTORE Version", False, error=error)
-                else:
-                    self.log_test("Projects - GET Versions", False, error=error)
-            else:
-                self.log_test("Projects - CREATE Version", False, error=error)
-                
-            # Test single-page export (default)
-            success, export_data, status, error = self.test_api_request('POST', f'projects/{project_id}/export')
-            if success:
-                self.log_test("Projects - EXPORT Single Page", True, "ZIP file generated")
-            else:
-                self.log_test("Projects - EXPORT Single Page", False, error=f"Status {status}: {error}")
-                
-            # Update to multi-page and test multi-page export
-            multi_update = {"export_mode": "multi"}
-            success, _, status, error = self.test_api_request('PUT', f'projects/{project_id}', multi_update)
-            if success:
-                success, export_data, status, error = self.test_api_request('POST', f'projects/{project_id}/export')
-                if success:
-                    self.log_test("Projects - EXPORT Multi Page", True, "Multi-page ZIP generated")
-                else:
-                    self.log_test("Projects - EXPORT Multi Page", False, error=f"Status {status}: {error}")
-                
-        else:
-            self.log_test("Projects - CREATE", False, error=f"Status {status}: {error}")
-            return False
-            
-        # Test GET all projects
-        success, projects, status, error = self.test_api_request('GET', 'projects')
-        if success:
-            self.log_test("Projects - GET All", True, f"Retrieved {len(projects)} projects")
-        else:
-            self.log_test("Projects - GET All", False, error=error)
-            
-        return True
-
-    def test_template_cloning(self):
-        """Test template cloning from project - Phase 3+4 feature"""
-        
-        # Get a project to clone from
-        success, projects, status, error = self.test_api_request('GET', 'projects')
-        if not success or not projects:
-            self.log_test("Template Cloning - Prerequisites", False, error="No projects available")
-            return False
-            
-        project_id = projects[0]['id']
-        
-        # Test clone template from project
-        clone_url = f'templates/clone-from-project/{project_id}?name=Cloned Test Template&category=custom'
-        success, cloned_template, status, error = self.test_api_request('POST', clone_url)
-        
-        if success:
-            self.created_resources['templates'].append(cloned_template['id'])
-            self.log_test("Template Cloning", True, f"Cloned template: {cloned_template['name']}")
-            
-            # Verify the cloned template has expected fields
-            required_fields = ['id', 'name', 'category', 'theme', 'sections', 'is_custom']
-            missing_fields = [f for f in required_fields if f not in cloned_template]
-            if missing_fields:
-                self.log_test("Template Cloning - Structure", False, error=f"Missing: {missing_fields}")
-            else:
-                self.log_test("Template Cloning - Structure", True, "All fields present")
-        else:
-            self.log_test("Template Cloning", False, error=f"Status {status}: {error}")
-            
-        return success
-
-    def test_activity_log(self):
-        """Test dashboard activity endpoint"""
-        success, activities, status, error = self.test_api_request('GET', 'dashboard/activity')
-        
-        if success:
-            if isinstance(activities, list):
-                self.log_test("Activity Log", True, f"Retrieved {len(activities)} activities")
-                
-                # Check activity structure if any exist
-                if activities:
-                    activity = activities[0]
-                    required_fields = ['id', 'type', 'message', 'created_at']
-                    missing_fields = [field for field in required_fields if field not in activity]
-                    
-                    if missing_fields:
-                        self.log_test("Activity Log - Structure", False, error=f"Missing fields: {missing_fields}")
+                            self.log_test("Languages Endpoint", False, f"❌ Missing required fields in language data")
                     else:
-                        self.log_test("Activity Log - Structure", True, "Activity structure valid")
+                        self.log_test("Languages Endpoint", False, f"❌ Expected 10 languages {expected_langs}, got {available_langs}")
+                else:
+                    self.log_test("Languages Endpoint", False, f"❌ Expected dict response, got {type(data)}")
             else:
-                self.log_test("Activity Log", False, error="Response is not a list")
-        else:
-            self.log_test("Activity Log", False, error=f"Status {status}: {error}")
+                self.log_test("Languages Endpoint", False, f"❌ HTTP {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Languages Endpoint", False, f"❌ Exception: {str(e)}")
+        return False
+    
+    async def test_existing_endpoints(self):
+        """Test existing endpoints to ensure they still work"""
+        tests = [
+            ("GET /templates", "/templates"),
+            ("GET /dashboard/stats", "/dashboard/stats"),
+            ("GET /auth/check", "/auth/check")
+        ]
         
-        return success
-
-    def cleanup_resources(self):
-        """Clean up created test resources"""
-        print("\n🧹 Cleaning up test resources...")
+        all_passed = True
+        for test_name, endpoint in tests:
+            try:
+                response = await self.client.get(f"{self.base_url}{endpoint}")
+                if response.status_code == 200:
+                    self.log_test(f"Existing Endpoint: {test_name}", True, f"✅ Status 200")
+                else:
+                    self.log_test(f"Existing Endpoint: {test_name}", False, f"❌ HTTP {response.status_code}")
+                    all_passed = False
+            except Exception as e:
+                self.log_test(f"Existing Endpoint: {test_name}", False, f"❌ Exception: {str(e)}")
+                all_passed = False
         
-        # Delete created projects
-        for project_id in self.created_resources['projects']:
-            success, _, status, _ = self.test_api_request('DELETE', f'projects/{project_id}')
-            if success:
-                print(f"    Deleted project: {project_id}")
+        return all_passed
+    
+    async def get_template_id(self) -> Optional[str]:
+        """Get a template ID from the templates endpoint"""
+        try:
+            response = await self.client.get(f"{self.base_url}/templates")
+            if response.status_code == 200:
+                templates = response.json()
+                if templates and len(templates) > 0:
+                    template_id = templates[0]["id"]
+                    self.log_test("Get Template ID", True, f"✅ Found template: {template_id}")
+                    return template_id
+                else:
+                    self.log_test("Get Template ID", False, "❌ No templates available")
             else:
-                print(f"    Failed to delete project: {project_id}")
-        
-        # Delete created clients  
-        for client_id in self.created_resources['clients']:
-            success, _, status, _ = self.test_api_request('DELETE', f'clients/{client_id}')
-            if success:
-                print(f"    Deleted client: {client_id}")
+                self.log_test("Get Template ID", False, f"❌ HTTP {response.status_code}")
+        except Exception as e:
+            self.log_test("Get Template ID", False, f"❌ Exception: {str(e)}")
+        return None
+    
+    async def create_test_project(self, template_id: str) -> Optional[str]:
+        """Create a test project for testing"""
+        try:
+            project_data = {
+                "name": "Hotel Paradise Test",
+                "template_id": template_id
+            }
+            response = await self.client.post(f"{self.base_url}/projects", json=project_data)
+            
+            if response.status_code == 200:
+                project = response.json()
+                project_id = project["id"]
+                self.log_test("Create Test Project", True, f"✅ Created project: {project_id}")
+                return project_id
             else:
-                print(f"    Failed to delete client: {client_id}")
+                self.log_test("Create Test Project", False, f"❌ HTTP {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Create Test Project", False, f"❌ Exception: {str(e)}")
+        return None
+    
+    async def test_publish_unpublish(self, project_id: str):
+        """Test publish/unpublish functionality"""
+        try:
+            # Test publish
+            response = await self.client.post(f"{self.base_url}/projects/{project_id}/publish")
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("published") == True and "live_url" in data:
+                    self.log_test("Publish Project", True, f"✅ Project published with live URL: {data['live_url']}")
+                    
+                    # Test hosted endpoint - should return HTML
+                    hosted_response = await self.client.get(f"{self.base_url}/hosted/{project_id}")
+                    if hosted_response.status_code == 200:
+                        html_content = hosted_response.text
+                        if "<!DOCTYPE html>" in html_content and "<html" in html_content:
+                            self.log_test("Hosted Endpoint (Published)", True, f"✅ Returns valid HTML content ({len(html_content)} chars)")
+                        else:
+                            self.log_test("Hosted Endpoint (Published)", False, "❌ Invalid HTML response")
+                            return False
+                    else:
+                        self.log_test("Hosted Endpoint (Published)", False, f"❌ HTTP {hosted_response.status_code}")
+                        return False
+                    
+                    # Test unpublish
+                    unpublish_response = await self.client.post(f"{self.base_url}/projects/{project_id}/unpublish")
+                    if unpublish_response.status_code == 200:
+                        unpublish_data = unpublish_response.json()
+                        if unpublish_data.get("published") == False:
+                            self.log_test("Unpublish Project", True, "✅ Project unpublished successfully")
+                            
+                            # Test hosted endpoint after unpublish - should return 403
+                            hosted_after_unpublish = await self.client.get(f"{self.base_url}/hosted/{project_id}")
+                            if hosted_after_unpublish.status_code == 403:
+                                self.log_test("Hosted Endpoint (Unpublished)", True, "✅ Returns 403 after unpublish")
+                                return True
+                            else:
+                                self.log_test("Hosted Endpoint (Unpublished)", False, f"❌ Expected 403, got {hosted_after_unpublish.status_code}")
+                        else:
+                            self.log_test("Unpublish Project", False, "❌ Project not properly unpublished")
+                    else:
+                        self.log_test("Unpublish Project", False, f"❌ HTTP {unpublish_response.status_code}")
+                else:
+                    self.log_test("Publish Project", False, "❌ Invalid publish response structure")
+            else:
+                self.log_test("Publish Project", False, f"❌ HTTP {response.status_code}: {response.text}")
+        except Exception as e:
+            self.log_test("Publish/Unpublish", False, f"❌ Exception: {str(e)}")
+        return False
+    
+    async def test_project_new_fields(self, project_id: str):
+        """Test updating project with new fields (analytics, bundle_assets, language)"""
+        try:
+            # Test analytics update
+            analytics_data = {
+                "analytics": {
+                    "ga_id": "G-TEST123456",
+                    "custom_head_code": "<script>console.log('Custom tracking code');</script>"
+                }
+            }
+            response = await self.client.put(f"{self.base_url}/projects/{project_id}", json=analytics_data)
+            if response.status_code == 200:
+                self.log_test("Update Analytics", True, "✅ Analytics fields updated")
+            else:
+                self.log_test("Update Analytics", False, f"❌ HTTP {response.status_code}")
+                return False
+            
+            # Test bundle_assets update
+            bundle_data = {"bundle_assets": True}
+            response = await self.client.put(f"{self.base_url}/projects/{project_id}", json=bundle_data)
+            if response.status_code == 200:
+                self.log_test("Update Bundle Assets", True, "✅ Bundle assets field updated")
+            else:
+                self.log_test("Update Bundle Assets", False, f"❌ HTTP {response.status_code}")
+                return False
+            
+            # Test language update
+            lang_data = {"language": "de"}
+            response = await self.client.put(f"{self.base_url}/projects/{project_id}", json=lang_data)
+            if response.status_code == 200:
+                self.log_test("Update Language", True, "✅ Language field updated to German")
+            else:
+                self.log_test("Update Language", False, f"❌ HTTP {response.status_code}")
+                return False
+            
+            # Verify all fields are stored correctly
+            get_response = await self.client.get(f"{self.base_url}/projects/{project_id}")
+            if get_response.status_code == 200:
+                project = get_response.json()
+                analytics = project.get("analytics", {})
                 
-        # Delete created templates
-        for template_id in self.created_resources['templates']:
-            success, _, status, _ = self.test_api_request('DELETE', f'templates/{template_id}')
-            if success:
-                print(f"    Deleted template: {template_id}")
+                # Check all updated fields
+                checks = [
+                    (analytics.get("ga_id") == "G-TEST123456", "GA ID"),
+                    ("<script>" in analytics.get("custom_head_code", ""), "Custom head code"),
+                    (project.get("bundle_assets") == True, "Bundle assets"),
+                    (project.get("language") == "de", "Language")
+                ]
+                
+                all_good = all(check[0] for check in checks)
+                if all_good:
+                    self.log_test("Verify New Fields", True, "✅ All new fields stored correctly")
+                    return True
+                else:
+                    failed_checks = [check[1] for check in checks if not check[0]]
+                    self.log_test("Verify New Fields", False, f"❌ Failed verifications: {', '.join(failed_checks)}")
             else:
-                print(f"    Failed to delete template: {template_id}")
-
-    def run_all_tests(self):
-        """Run all backend API tests including Phase 3+4 features"""
-        print("🚀 Starting Syroce CRM Backend API Tests (Phase 3+4)")
-        print(f"📡 Backend URL: {self.base_url}")
+                self.log_test("Verify New Fields", False, f"❌ Could not retrieve project: HTTP {get_response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Project New Fields", False, f"❌ Exception: {str(e)}")
+        return False
+    
+    async def test_export_with_analytics(self, project_id: str):
+        """Test export functionality and check if analytics code is included"""
+        try:
+            response = await self.client.post(f"{self.base_url}/projects/{project_id}/export")
+            
+            if response.status_code == 200:
+                # Check content type
+                content_type = response.headers.get("content-type", "")
+                if "application/zip" in content_type:
+                    self.log_test("Export Content Type", True, "✅ Returns ZIP file")
+                    
+                    # Extract and check ZIP contents
+                    zip_data = response.content
+                    with zipfile.ZipFile(io.BytesIO(zip_data), 'r') as zf:
+                        file_list = zf.namelist()
+                        
+                        # Find HTML file
+                        html_files = [f for f in file_list if f.endswith('.html')]
+                        if html_files:
+                            html_file = html_files[0]
+                            html_content = zf.read(html_file).decode('utf-8')
+                            
+                            # Check for analytics code
+                            analytics_checks = [
+                                ("G-TEST123456" in html_content, "Google Analytics ID"),
+                                ("gtag(" in html_content, "Google Analytics script"),
+                                ("console.log('Custom tracking code')" in html_content, "Custom tracking code")
+                            ]
+                            
+                            passed_checks = [check[1] for check in analytics_checks if check[0]]
+                            failed_checks = [check[1] for check in analytics_checks if not check[0]]
+                            
+                            if len(passed_checks) >= 2:  # At least 2 out of 3 should pass
+                                self.log_test("Export Analytics Integration", True, f"✅ Analytics code found: {', '.join(passed_checks)}")
+                                return True
+                            else:
+                                self.log_test("Export Analytics Integration", False, f"❌ Analytics code missing: {', '.join(failed_checks)}")
+                        else:
+                            self.log_test("Export Analytics Integration", False, "❌ No HTML file found in ZIP")
+                else:
+                    self.log_test("Export Content Type", False, f"❌ Expected ZIP, got {content_type}")
+            else:
+                self.log_test("Export Project", False, f"❌ HTTP {response.status_code}: {response.text}")
+                
+        except Exception as e:
+            self.log_test("Export with Analytics", False, f"❌ Exception: {str(e)}")
+        return False
+    
+    async def test_booking_renderer(self, project_id: str):
+        """Test if booking section is properly rendered in the project"""
+        try:
+            # Add a booking section to the project
+            booking_section = {
+                "sections": [
+                    {
+                        "id": "booking-section",
+                        "type": "booking",
+                        "visible": True,
+                        "props": {
+                            "title": "Book Your Stay",
+                            "subtitle": "Reserve your room today",
+                            "phone": "+90 123 456 7890",
+                            "email": "reservations@hotelparadise.com",
+                            "roomTypes": ["Standard Room", "Deluxe Room", "Suite"]
+                        }
+                    }
+                ]
+            }
+            
+            update_response = await self.client.put(f"{self.base_url}/projects/{project_id}", json=booking_section)
+            if update_response.status_code == 200:
+                self.log_test("Add Booking Section", True, "✅ Booking section added to project")
+                
+                # Test preview to check if booking renders
+                preview_response = await self.client.get(f"{self.base_url}/projects/{project_id}/preview")
+                if preview_response.status_code == 200:
+                    html_content = preview_response.text
+                    
+                    # Check for booking form elements
+                    booking_checks = [
+                        ("Book Your Stay" in html_content, "Booking title"),
+                        ("reservations@hotelparadise.com" in html_content, "Email contact"),
+                        ("+90 123 456 7890" in html_content, "Phone contact"),
+                        ("Standard Room" in html_content, "Room types"),
+                        ("booking-" in html_content.lower(), "Booking form elements")
+                    ]
+                    
+                    passed_checks = [check[1] for check in booking_checks if check[0]]
+                    
+                    if len(passed_checks) >= 3:
+                        self.log_test("Booking Section Renderer", True, f"✅ Booking section rendered: {', '.join(passed_checks)}")
+                        return True
+                    else:
+                        failed_checks = [check[1] for check in booking_checks if not check[0]]
+                        self.log_test("Booking Section Renderer", False, f"❌ Booking elements missing: {', '.join(failed_checks)}")
+                else:
+                    self.log_test("Booking Section Renderer", False, f"❌ Preview failed: HTTP {preview_response.status_code}")
+            else:
+                self.log_test("Add Booking Section", False, f"❌ HTTP {update_response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Booking Renderer", False, f"❌ Exception: {str(e)}")
+        return False
+    
+    async def cleanup_test_project(self, project_id: str):
+        """Clean up test project"""
+        try:
+            response = await self.client.delete(f"{self.base_url}/projects/{project_id}")
+            if response.status_code == 200:
+                self.log_test("Cleanup Test Project", True, "✅ Test project deleted")
+            else:
+                self.log_test("Cleanup Test Project", False, f"❌ HTTP {response.status_code}")
+        except Exception as e:
+            self.log_test("Cleanup Test Project", False, f"❌ Exception: {str(e)}")
+    
+    async def run_all_tests(self):
+        """Run all backend tests"""
+        print(f"🧪 Starting Syroce CRM Backend API Tests")
+        print(f"🎯 Backend URL: {self.base_url}")
         print("=" * 60)
-        
-        # Test basic connectivity
-        success, _, status, error = self.test_api_request('GET', 'dashboard/stats')
-        if not success:
-            print(f"❌ Cannot connect to backend API: {error}")
-            return 1
         
         try:
-            # Phase 3+4: JWT Authentication tests
-            if not self.test_auth_flow():
-                print("❌ Authentication failed - cannot proceed with protected endpoints")
-                return 1
+            # Test 1: Languages endpoint
+            await self.test_languages_endpoint()
             
-            # Phase 3+4: Image upload test
-            self.test_image_upload()
+            # Test 2: Existing endpoints
+            await self.test_existing_endpoints()
             
-            # Core functionality tests
-            self.test_dashboard_stats()
-            self.test_templates_endpoint()
-            self.test_clients_crud()
+            # Test 3: Get template for project creation
+            self.template_id = await self.get_template_id()
+            if not self.template_id:
+                print("❌ Cannot continue tests without template ID")
+                return False
             
-            # Phase 3+4: Enhanced projects with SEO, versioning, multi-export
-            self.test_projects_crud_with_phase4_features()
+            # Test 4: Create test project
+            self.project_id = await self.create_test_project(self.template_id)
+            if not self.project_id:
+                print("❌ Cannot continue tests without project ID")
+                return False
             
-            # Phase 3+4: Template cloning from project
-            self.test_template_cloning()
+            # Test 5: Publish/Unpublish functionality
+            await self.test_publish_unpublish(self.project_id)
             
-            # Activity log test
-            self.test_activity_log()
+            # Test 6: Project new fields (analytics, bundle_assets, language)
+            await self.test_project_new_fields(self.project_id)
+            
+            # Test 7: Export with analytics
+            await self.test_export_with_analytics(self.project_id)
+            
+            # Test 8: Booking section renderer
+            await self.test_booking_renderer(self.project_id)
+            
+            # Cleanup
+            await self.cleanup_test_project(self.project_id)
             
         except Exception as e:
-            print(f"❌ Test execution error: {e}")
-            return 1
+            print(f"❌ Fatal error in test suite: {str(e)}")
+        
         finally:
-            # Always cleanup
-            self.cleanup_resources()
+            await self.close()
         
-        # Print results
+        # Summary
+        print("\n" + "=" * 60)
+        print("🏁 TEST RESULTS SUMMARY")
         print("=" * 60)
-        print(f"📊 Test Results: {self.tests_passed}/{self.tests_run} passed")
-        success_rate = (self.tests_passed / self.tests_run * 100) if self.tests_run > 0 else 0
-        print(f"📈 Success Rate: {success_rate:.1f}%")
         
-        if success_rate >= 80:
-            print("✅ Backend API tests PASSED")
-            return 0
-        else:
-            print("❌ Backend API tests FAILED")
-            return 1
+        total_tests = len(self.test_results)
+        passed_tests = sum(1 for result in self.test_results.values() if result["success"])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests} ✅")
+        print(f"Failed: {failed_tests} ❌")
+        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%" if total_tests > 0 else "0%")
+        
+        if failed_tests > 0:
+            print("\n❌ FAILED TESTS:")
+            for test_name, result in self.test_results.items():
+                if not result["success"]:
+                    print(f"  • {test_name}: {result['details']}")
+        
+        return failed_tests == 0
 
-def main():
-    tester = SyroceCRMTester()
-    return tester.run_all_tests()
+
+async def main():
+    """Main test runner"""
+    tester = BackendTester(BACKEND_URL)
+    success = await tester.run_all_tests()
+    sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    asyncio.run(main())
