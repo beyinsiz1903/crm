@@ -178,21 +178,23 @@ export default function Clients() {
                   <TableHead>Otel Adi</TableHead>
                   <TableHead>Yetkili</TableHead>
                   <TableHead>Sehir</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Etiketler</TableHead>
                   <TableHead>Telefon</TableHead>
-                  <TableHead>E-posta</TableHead>
                   <TableHead className="text-right">Islemler</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {clients.map((client) => (
-                  <TableRow key={client.id} className="hover:bg-muted/30">
+                  <TableRow key={client.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => openDetail(client)}>
                     <TableCell className="font-medium">{client.hotel_name}</TableCell>
                     <TableCell>{client.contact_name}</TableCell>
                     <TableCell>{client.city}</TableCell>
+                    <TableCell>{client.category ? <Badge variant="outline" className="text-[10px]">{client.category}</Badge> : "-"}</TableCell>
+                    <TableCell><div className="flex gap-1 flex-wrap">{(client.tags || []).slice(0, 2).map(t => <Badge key={t} variant="secondary" className="text-[9px]">{t}</Badge>)}{(client.tags || []).length > 2 && <Badge variant="secondary" className="text-[9px]">+{client.tags.length - 2}</Badge>}</div></TableCell>
                     <TableCell className="font-mono text-sm">{client.phone}</TableCell>
-                    <TableCell className="text-sm">{client.email}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost" size="icon" className="h-8 w-8"
                           onClick={() => openEdit(client)}
