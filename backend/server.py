@@ -296,6 +296,9 @@ async def create_project(data: ProjectCreate):
         "seo": {"title": "", "description": "", "keywords": "", "og_image": ""},
         "language": data.language or "tr",
         "export_mode": "single",
+        "analytics": {"ga_id": "", "custom_head_code": ""},
+        "published": False,
+        "bundle_assets": False,
         "created_at": now,
         "updated_at": now,
     }
