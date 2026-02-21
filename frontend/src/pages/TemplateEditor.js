@@ -675,6 +675,15 @@ export default function TemplateEditor() {
             <Check size={12} className="mr-1" /> Kaydedildi
           </Badge>
         )}
+        {/* Undo/Redo */}
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleUndo} disabled={undoStack.length === 0} title="Geri Al (Ctrl+Z)" data-testid="editor-undo">
+            <Undo2 size={14} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRedo} disabled={redoStack.length === 0} title="Yinele (Ctrl+Y)" data-testid="editor-redo">
+            <Redo2 size={14} />
+          </Button>
+        </div>
         {/* Publish button */}
         <Button
           variant={project.published ? "default" : "outline"}
