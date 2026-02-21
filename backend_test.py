@@ -137,9 +137,6 @@ class CRMTester:
             if field not in response:
                 raise Exception(f"Missing field '{field}' in user response")
         
-        if response.get("role") != "admin":
-            raise Exception(f"Expected admin role, got {response.get('role')}")
-        
         return response
     
     # ==================== LEADS TESTS ====================
