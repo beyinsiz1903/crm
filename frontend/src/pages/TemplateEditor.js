@@ -29,7 +29,8 @@ import ImageUpload from "@/components/ImageUpload";
 import {
   getProject, updateProject, exportProject,
   cloneTemplateFromProject, getVersions, createVersion, restoreVersion,
-  publishProject, unpublishProject
+  publishProject, unpublishProject,
+  getSectionPresets, createSectionPreset, deleteSectionPreset
 } from "@/lib/api";
 import { generatePreviewHTML } from "@/lib/previewRenderer";
 
