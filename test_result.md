@@ -101,3 +101,184 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: "Syroce CRM otel web sitesi uretim aracinda 8 eksik ozellik tamamlanacak: 1) Canli hosting, 2) Drag-and-drop editor, 3) Booking engine/rezervasyon widget, 4) Analytics/performans izleme, 5) Otomatik deployment/yayinlama, 6) Responsive editor, 7) Coklu dil (10 dil), 8) Asset bundling"
+
+backend:
+  - task: "Multi-language support (10 dil: TR, EN, DE, FR, ES, IT, RU, AR, JA, ZH)"
+    implemented: true
+    working: "NA"
+    file: "backend/export_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "10 dil icin TRANSLATIONS sozlugu ve /api/languages endpoint eklendi"
+
+  - task: "Asset bundling in export (harici gorselleri ZIP icine dahil etme)"
+    implemented: true
+    working: "NA"
+    file: "backend/export_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "create_export_zip_with_assets ve create_multipage_export_zip_with_assets fonksiyonlari eklendi. httpx ile async image download."
+
+  - task: "Analytics tracking code injection (GA + custom head code)"
+    implemented: true
+    working: "NA"
+    file: "backend/export_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "_get_analytics_code fonksiyonu eklendi. Project modeline analytics alani eklendi."
+
+  - task: "Booking/reservation widget section renderer"
+    implemented: true
+    working: "NA"
+    file: "backend/export_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "render_booking fonksiyonu eklendi. Yerlesik form + harici widget embed destegi."
+
+  - task: "Publish/unpublish live hosting endpoints"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "POST /api/projects/{id}/publish, POST /api/projects/{id}/unpublish, GET /api/hosted/{id} endpoints eklendi."
+
+  - task: "Updated export endpoint with asset bundling support"
+    implemented: true
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Export endpoint bundle_assets flag'ine gore async asset bundling yapabiliyor."
+
+frontend:
+  - task: "Drag-and-drop section reordering (@dnd-kit)"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/TemplateEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "@dnd-kit/core, @dnd-kit/sortable entegrasyonu. SortableSectionItem component."
+
+  - task: "Booking section editor UI"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/TemplateEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Booking section formu: baslik, telefon, email, oda tipleri, widget kodu. previewRenderer da booking render."
+
+  - task: "10 dil destegi UI (dil secimi dropdown)"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/TemplateEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "10 dil dropdown (TR, EN, DE, FR, ES, IT, RU, AR, JA, ZH). previewRenderer.js de 10 dil ceviri."
+
+  - task: "Analytics panel (GA ID + custom tracking code)"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/TemplateEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "SEO tabinda Analytics & Izleme bolumu: GA ID, ozel kod alani."
+
+  - task: "Publish/unpublish button + live URL"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/TemplateEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Yayinla butonu, Canli siteyi ac link, durum gostergesi. publishProject/unpublishProject API cagrilari."
+
+  - task: "Asset bundling toggle in settings"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/TemplateEditor.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Ayarlar tabinda asset bundling toggle. bundle_assets alani project'e eklendi."
+
+  - task: "Responsive editor improvements"
+    implemented: true
+    working: "NA"
+    file: "frontend/src/pages/TemplateEditor.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Cihaz moduna gore responsive hint mesajlari ve tema panelinde mod gostergesi."
+
+metadata:
+  created_by: "main_agent"
+  version: "2.0"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Publish/unpublish live hosting endpoints"
+    - "Multi-language support"
+    - "Booking section renderer"
+    - "Analytics injection"
+    - "Asset bundling export"
+  stuck_tasks: []
+  test_all: true
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+    - message: "8 eksik ozellik implement edildi. Backend: 10 dil, asset bundling, analytics, booking widget, publish/hosting. Frontend: dnd editor, booking UI, 10 dil dropdown, analytics panel, publish button, asset bundling toggle, responsive hints. Tum backend endpointleri test edilmeli."
