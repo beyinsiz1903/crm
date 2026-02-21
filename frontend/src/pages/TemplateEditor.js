@@ -159,6 +159,66 @@ export default function TemplateEditor() {
     setPreviewHtml(generatePreviewHTML(sections, theme, lang || "tr"));
   }, []);
 
+  // ==================== UNDO/REDO ====================
+  const pushUndoState = useCallback((proj) => {
+    if (isUndoRedo.current) return;
+    setUndoStack((prev) => {
+      const snapshot = JSON.stringify({ sections: proj.sections, theme: proj.theme });
+      const newStack = [...prev, snapshot];
+      if (newStack.length > 30) newStack.shift();
+      return newStack;
+    });
+    setRedoStack([]);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.length === 0 || !project) return;
+    isUndoRedo.current = true;
+    const currentSnapshot = JSON.stringify({ sections: project.sections, theme: project.theme });
+    setRedoStack((prev) => [...prev, currentSnapshot]);
+    const prevSnapshot = JSON.parse(undoStack[undoStack.length - 1]);
+    setUndoStack((prev) => prev.slice(0, -1));
+    setProject((p) => {
+      const updated = { ...p, sections: prevSnapshot.sections, theme: prevSnapshot.theme };
+      updatePreview(updated.sections, updated.theme, updated.language);
+      autoSave(updated);
+      return updated;
+    });
+    setTimeout(() => { isUndoRedo.current = false; }, 100);
+  }, [undoStack, project, updatePreview, autoSave]);
+
+  const handleRedo = useCallback(() => {
+    if (redoStack.length === 0 || !project) return;
+    isUndoRedo.current = true;
+    const currentSnapshot = JSON.stringify({ sections: project.sections, theme: project.theme });
+    setUndoStack((prev) => [...prev, currentSnapshot]);
+    const nextSnapshot = JSON.parse(redoStack[redoStack.length - 1]);
+    setRedoStack((prev) => prev.slice(0, -1));
+    setProject((p) => {
+      const updated = { ...p, sections: nextSnapshot.sections, theme: nextSnapshot.theme };
+      updatePreview(updated.sections, updated.theme, updated.language);
+      autoSave(updated);
+      return updated;
+    });
+    setTimeout(() => { isUndoRedo.current = false; }, 100);
+  }, [redoStack, project, updatePreview, autoSave]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleUndo, handleRedo]);
+
   const autoSave = useCallback((updatedProject) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
