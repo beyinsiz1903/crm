@@ -107,75 +107,93 @@ user_problem_statement: "Syroce CRM otel web sitesi uretim aracinda 8 eksik ozel
 backend:
   - task: "Multi-language support (10 dil: TR, EN, DE, FR, ES, IT, RU, AR, JA, ZH)"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/export_service.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "10 dil icin TRANSLATIONS sozlugu ve /api/languages endpoint eklendi"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - GET /api/languages returns all 10 languages (tr,en,de,fr,es,it,ru,ar,ja,zh) with proper structure (name,native,flag). Endpoint fully functional."
 
   - task: "Asset bundling in export (harici gorselleri ZIP icine dahil etme)"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/export_service.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "create_export_zip_with_assets ve create_multipage_export_zip_with_assets fonksiyonlari eklendi. httpx ile async image download."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Asset bundling working correctly. Export with bundle_assets=true successfully downloads external images and includes them in ZIP. Tested both single and multipage export modes."
 
   - task: "Analytics tracking code injection (GA + custom head code)"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/export_service.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "_get_analytics_code fonksiyonu eklendi. Project modeline analytics alani eklendi."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Analytics injection fully working. GA ID (G-TEST123456) and custom head code properly injected into exported HTML. Both Google Analytics gtag script and custom tracking code found in export."
 
   - task: "Booking/reservation widget section renderer"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/export_service.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "render_booking fonksiyonu eklendi. Yerlesik form + harici widget embed destegi."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Booking section renderer working perfectly. Test booking section with title, phone, email, room types properly rendered in preview HTML. All booking form elements present."
 
   - task: "Publish/unpublish live hosting endpoints"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "POST /api/projects/{id}/publish, POST /api/projects/{id}/unpublish, GET /api/hosted/{id} endpoints eklendi."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Publish/unpublish fully functional. Published project returns valid HTML (20KB+), unpublished project correctly returns 403. Live hosting workflow complete."
 
   - task: "Updated export endpoint with asset bundling support"
     implemented: true
-    working: "NA"
+    working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Export endpoint bundle_assets flag'ine gore async asset bundling yapabiliyor."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Export endpoint with asset bundling support working correctly. Project fields (analytics, bundle_assets, language) all update and persist correctly. Export generates proper ZIP files."
 
 frontend:
   - task: "Drag-and-drop section reordering (@dnd-kit)"
