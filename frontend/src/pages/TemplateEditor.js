@@ -1059,6 +1059,14 @@ export default function TemplateEditor() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Library size={18} /> Blok Kutuphanesi</DialogTitle>
           </DialogHeader>
+          {presets.length > 0 && (
+            <div className="flex flex-wrap gap-1 pb-2 border-b border-border">
+              <Badge variant="outline" className="text-[10px] cursor-pointer hover:bg-primary/10" onClick={() => loadPresets()}>Tumu ({presets.length})</Badge>
+              {[...new Set(presets.map(p => p.category))].map(cat => (
+                <Badge key={cat} variant="outline" className="text-[10px] cursor-pointer hover:bg-primary/10" onClick={async () => { const data = await getSectionPresets(cat); setPresets(data); }}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</Badge>
+              ))}
+            </div>
+          )}
           <div className="space-y-2 max-h-[400px] overflow-auto">
             {presets.length === 0 ? (
               <div className="text-center py-8">
