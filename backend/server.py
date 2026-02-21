@@ -339,10 +339,17 @@ async def export_project(project_id: str):
     if not project:
         raise HTTPException(status_code=404, detail="Proje bulunamadi")
     export_mode = project.get("export_mode", "single")
-    if export_mode == "multi":
-        zip_bytes = create_multipage_export_zip(project)
+    bundle = project.get("bundle_assets", False)
+    if bundle:
+        if export_mode == "multi":
+            zip_bytes = await create_multipage_export_zip_with_assets(project)
+        else:
+            zip_bytes = await create_export_zip_with_assets(project)
     else:
-        zip_bytes = create_export_zip(project)
+        if export_mode == "multi":
+            zip_bytes = create_multipage_export_zip(project)
+        else:
+            zip_bytes = create_export_zip(project)
     filename = project.get("name", "hotel-website").lower().replace(" ", "-")
     await log_activity("project_exported", f"'{project['name']}' projesi disari aktarildi ({export_mode})", project_id, "project")
     return Response(
