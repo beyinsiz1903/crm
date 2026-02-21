@@ -598,6 +598,7 @@ class CRMTester:
         print("-" * 40)
         self.run_test("Create Campaign", self.test_create_campaign)
         self.run_test("Activate Campaign (MOCK)", self.test_activate_campaign)
+        self.run_test("Pause Campaign", self.test_pause_campaign)
         
         # Reports Tests
         print("\n📈 REPORTS TESTS")
