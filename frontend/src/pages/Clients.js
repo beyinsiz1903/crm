@@ -53,7 +53,7 @@ export default function Clients() {
 
   useEffect(() => {
     load();
-  }, [search]);
+  }, [search, categoryFilter]);
 
   const openCreate = () => {
     setEditingClient(null);
@@ -71,9 +71,34 @@ export default function Clients() {
       address: client.address || "",
       city: client.city || "",
       notes: client.notes || "",
+      tags: client.tags || [],
+      category: client.category || "",
+      custom_fields: client.custom_fields || {},
     });
     setDialogOpen(true);
   };
+
+  const openDetail = (client) => {
+    setSelectedClient(client);
+    setDetailOpen(true);
+    getCommunications("client", client.id).then(setComms).catch(() => setComms([]));
+  };
+
+  const addTag = () => {
+    if (tagInput.trim() && !form.tags.includes(tagInput.trim())) {
+      setForm({ ...form, tags: [...form.tags, tagInput.trim()] });
+      setTagInput("");
+    }
+  };
+
+  const addComm = async () => {
+    if (!commForm.content.trim() || !selectedClient) return;
+    await createCommunication({ entity_type: "client", entity_id: selectedClient.id, ...commForm });
+    setCommForm({ comm_type: "note", subject: "", content: "", direction: "outbound" });
+    getCommunications("client", selectedClient.id).then(setComms).catch(() => {});
+  };
+
+  const formatDate = (d) => { if (!d) return ""; const dt = new Date(d); const diff = Math.floor((Date.now() - dt) / 60000); if (diff < 60) return `${diff} dk once`; if (diff < 1440) return `${Math.floor(diff / 60)} saat once`; return dt.toLocaleDateString("tr-TR"); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
