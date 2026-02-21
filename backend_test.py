@@ -677,6 +677,8 @@ class CRMTester:
         print("-" * 40)
         self.run_test("Reports Overview", self.test_reports_overview)
         self.run_test("Reports Pipeline", self.test_reports_pipeline)
+        self.run_test("Reports Leads", self.test_reports_leads)
+        self.run_test("Reports Activity", self.test_reports_activity)
         
         # Forms Tests
         print("\n📋 FORMS TESTS")
