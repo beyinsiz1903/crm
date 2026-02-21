@@ -121,6 +121,17 @@ export default function TemplateEditor() {
   const [templateCategory, setTemplateCategory] = useState("custom");
   const [publishing, setPublishing] = useState(false);
   const saveTimeout = useRef(null);
+  // Undo/Redo state
+  const [undoStack, setUndoStack] = useState([]);
+  const [redoStack, setRedoStack] = useState([]);
+  const isUndoRedo = useRef(false);
+  // Block Library state
+  const [showBlockLibrary, setShowBlockLibrary] = useState(false);
+  const [presets, setPresets] = useState([]);
+  const [showSavePreset, setShowSavePreset] = useState(false);
+  const [presetSectionId, setPresetSectionId] = useState(null);
+  const [presetName, setPresetName] = useState("");
+  const [presetCategory, setPresetCategory] = useState("genel");
 
   // DnD sensors
   const sensors = useSensors(
