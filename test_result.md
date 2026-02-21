@@ -171,11 +171,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET /api/reports/overview, /api/reports/pipeline, /api/reports/leads, /api/reports/activity. Aggregation queries for conversion rate, score distribution, monthly trend."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - All report endpoints tested successfully. Verified: GET /api/reports/overview returns comprehensive metrics (total_leads, conversion_rate, source_distribution, stage_distribution, etc.), GET /api/reports/pipeline returns 7 stage breakdown with counts, GET /api/reports/leads returns monthly trends, source data, and score distribution, GET /api/reports/activity returns activity log summary with totals, daily breakdown, and recent activities."
 
   - task: "Form CRUD + submissions endpoints"
     implemented: true
