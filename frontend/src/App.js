@@ -7,6 +7,13 @@ import TemplateGallery from "@/pages/TemplateGallery";
 import TemplateEditor from "@/pages/TemplateEditor";
 import Clients from "@/pages/Clients";
 import Projects from "@/pages/Projects";
+import Leads from "@/pages/Leads";
+import Pipeline from "@/pages/Pipeline";
+import Campaigns from "@/pages/Campaigns";
+import Reports from "@/pages/Reports";
+import FormBuilder from "@/pages/FormBuilder";
+import Blog from "@/pages/Blog";
+import Team from "@/pages/Team";
 import Login from "@/pages/Login";
 import { checkAuth, getMe } from "@/lib/api";
 
