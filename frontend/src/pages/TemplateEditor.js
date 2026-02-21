@@ -1101,7 +1101,7 @@ export default function TemplateEditor() {
               <Select value={presetCategory} onValueChange={setPresetCategory}>
                 <SelectTrigger data-testid="save-preset-category"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["genel", "hero", "odalar", "galeri", "hizmetler", "iletisim", "banner", "rezervasyon"].map((c) => (
+                  {["genel", "hero", "odalar", "galeri", "hizmetler", "iletisim", "banner", "rezervasyon", "luks", "modern", "klasik", "minimal", "butik", "sahil", "dag", "sehir", "spa", "restoran"].map((c) => (
                     <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
                   ))}
                 </SelectContent>
