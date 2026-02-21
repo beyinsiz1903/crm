@@ -216,11 +216,14 @@ backend:
     file: "backend/content_routes.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET/POST/DELETE /api/domains, POST /api/domains/{id}/verify. Mock DNS records and verification."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Domain management endpoints tested successfully. Verified: POST /api/domains and POST /api/domains/{id}/verify endpoints exist and function correctly with proper RBAC (requires admin role). MOCK DNS records and verification logic implemented as expected. Admin role requirement working as designed."
 
   - task: "Team management + RBAC endpoints"
     implemented: true
