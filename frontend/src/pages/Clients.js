@@ -295,6 +295,26 @@ export default function Clients() {
                 data-testid="client-form-notes-input"
               />
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Kategori</label>
+                <Select value={form.category || "none"} onValueChange={(v) => setForm({ ...form, category: v === "none" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Sec..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Yok</SelectItem>
+                    {CATEGORIES.filter(Boolean).map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Etiketler</label>
+                <div className="flex gap-1">
+                  <Input placeholder="Etiket..." value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); }}} />
+                  <Button type="button" variant="outline" size="sm" onClick={addTag}>+</Button>
+                </div>
+                <div className="flex gap-1 mt-1 flex-wrap">{(form.tags || []).map(t => <Badge key={t} variant="secondary" className="text-[10px] cursor-pointer" onClick={() => setForm({ ...form, tags: form.tags.filter(x => x !== t) })}>{t} ×</Badge>)}</div>
+              </div>
+            </div>
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Iptal</Button>
               <Button type="submit" disabled={submitting} data-testid="client-form-submit">
@@ -302,6 +322,56 @@ export default function Clients() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detail + Timeline Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          {selectedClient && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Building2 size={18} /> {selectedClient.hotel_name}
+                  {selectedClient.category && <Badge variant="outline" className="text-[10px]">{selectedClient.category}</Badge>}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                <div><span className="text-muted-foreground">Yetkili:</span> {selectedClient.contact_name || "-"}</div>
+                <div><span className="text-muted-foreground">Email:</span> {selectedClient.email || "-"}</div>
+                <div><span className="text-muted-foreground">Telefon:</span> {selectedClient.phone || "-"}</div>
+                <div><span className="text-muted-foreground">Sehir:</span> {selectedClient.city || "-"}</div>
+                <div className="col-span-2"><span className="text-muted-foreground">Adres:</span> {selectedClient.address || "-"}</div>
+                {selectedClient.tags?.length > 0 && <div className="col-span-2"><span className="text-muted-foreground">Etiketler:</span> {selectedClient.tags.map(t => <Badge key={t} variant="secondary" className="text-[10px] ml-1">{t}</Badge>)}</div>}
+              </div>
+              {selectedClient.notes && <div className="bg-muted/50 p-3 rounded-lg text-sm mb-4">{selectedClient.notes}</div>}
+
+              <h3 className="font-semibold text-sm mb-3 border-t pt-4">Iletisim Gecmisi</h3>
+              <div className="flex gap-2 mb-3">
+                <Select value={commForm.comm_type} onValueChange={(v) => setCommForm({ ...commForm, comm_type: v })}><SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger><SelectContent>{COMM_TYPES.map(c => <SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>)}</SelectContent></Select>
+                <Input placeholder="Konu" value={commForm.subject} onChange={(e) => setCommForm({ ...commForm, subject: e.target.value })} className="flex-1" />
+              </div>
+              <div className="flex gap-2 mb-4">
+                <Textarea placeholder="Detay yazin..." value={commForm.content} onChange={(e) => setCommForm({ ...commForm, content: e.target.value })} rows={2} className="flex-1" />
+                <Button onClick={addComm} className="self-end">Ekle</Button>
+              </div>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                {comms.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">Henuz iletisim kaydi yok</p> : comms.map((c) => (
+                  <div key={c.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
+                    <div className="text-xl">{COMM_TYPES.find(t => t.value === c.comm_type)?.icon || "📋"}</div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <div className="font-medium text-sm">{c.subject || c.comm_type}</div>
+                        <span className="text-[10px] text-muted-foreground">{formatDate(c.created_at)}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{c.content}</p>
+                      {c.created_by_name && <p className="text-[10px] text-muted-foreground mt-1">— {c.created_by_name}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
