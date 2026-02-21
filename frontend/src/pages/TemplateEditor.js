@@ -276,6 +276,7 @@ export default function TemplateEditor() {
 
   const updateTheme = (key, value) => {
     setProject((prev) => {
+      pushUndoState(prev);
       const updated = { ...prev, theme: { ...prev.theme, [key]: value } };
       updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
