@@ -246,11 +246,14 @@ backend:
     file: "backend/team_routes.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET /api/activity-log with filters, GET /api/segments/tags, GET /api/segments/categories. Activity log now includes user_id."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Enhanced activity log and segments endpoints tested successfully. Verified: GET /api/activity-log returns activity history with proper filtering, GET /api/segments/tags returns unique tags from leads and clients, GET /api/segments/categories returns client categories. All endpoints functioning correctly with proper data aggregation."
 
   - task: "Client model enhanced with tags, category, custom_fields"
     implemented: true
