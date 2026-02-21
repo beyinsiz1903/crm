@@ -12,11 +12,6 @@ const SERVICE_ICONS = {
 
 const STAR_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
 
-function escapeHtml(text) {
-  if (!text) return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 function generateCSS(theme) {
   const pc = theme.primaryColor || "#C5A572";
   const sc = theme.secondaryColor || "#1A1A2E";
@@ -95,6 +90,14 @@ function generateCSS(theme) {
     .cta-banner .hero-content{position:relative;z-index:2}
     .cta-banner h2{font-size:2.5rem;margin-bottom:15px}
     .cta-banner p{font-size:1.2rem;margin-bottom:30px;opacity:0.9}
+    .booking-section{background:linear-gradient(135deg,${sc}05,${pc}08);padding:80px 0}
+    .booking-form-container{max-width:900px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 8px 40px rgba(0,0,0,0.1)}
+    .booking-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;margin-top:30px}
+    .booking-field label{display:block;font-size:0.85rem;font-weight:600;margin-bottom:8px;color:${sc}}
+    .booking-field input,.booking-field select{width:100%;padding:12px 16px;border:2px solid #eee;border-radius:8px;font-size:1rem;font-family:${bf};transition:border 0.2s}
+    .booking-field input:focus,.booking-field select:focus{border-color:${pc};outline:none}
+    .booking-submit{grid-column:1/-1;text-align:center;margin-top:10px}
+    .booking-submit .btn{padding:16px 60px;font-size:1.1rem}
     .site-footer{background:${sc};color:#fff;padding:60px 0 30px}
     .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:40px}
     .footer-grid h3{font-size:1.3rem;margin-bottom:20px;font-family:${hf}}
@@ -115,6 +118,7 @@ function generateCSS(theme) {
       .site-header nav{display:none}
       .hero h1{font-size:2.2rem}
       .section{padding:60px 0}
+      .booking-form{grid-template-columns:1fr}
     }
   `;
 }
@@ -165,9 +169,9 @@ function renderSection(section, theme, t) {
     }
     case "testimonials": {
       const testimonials = props.testimonials || [];
-      const itemsHtml = testimonials.map((t) => {
-        const stars = STAR_SVG.repeat(t.rating || 5);
-        return `<div class="testimonial-card"><div class="testimonial-stars">${stars}</div><p>"${t.text || ""}"</p><div class="testimonial-author">${t.name || ""}</div></div>`;
+      const itemsHtml = testimonials.map((testimonial) => {
+        const stars = STAR_SVG.repeat(testimonial.rating || 5);
+        return `<div class="testimonial-card"><div class="testimonial-stars">${stars}</div><p>"${testimonial.text || ""}"</p><div class="testimonial-author">${testimonial.name || ""}</div></div>`;
       }).join("");
       return `<section class="section" style="background:#f8f8f8" id="yorumlar"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="testimonials-grid">${itemsHtml}</div></div></section>`;
     }
@@ -177,6 +181,33 @@ function renderSection(section, theme, t) {
     case "banner": {
       const ctaHtml = props.ctaText ? `<a href="${props.ctaLink || "#"}" class="btn">${props.ctaText}</a>` : "";
       return `<section class="cta-banner"><div class="hero-bg" style="background-image:url('${props.backgroundImage || ""}')"></div><div class="hero-overlay"></div><div class="hero-content"><h2>${props.title || ""}</h2><p>${props.subtitle || ""}</p>${ctaHtml}</div></section>`;
+    }
+    case "booking": {
+      const title = props.title || t.booking_title;
+      const subtitle = props.subtitle || t.booking_subtitle;
+      const widgetCode = props.widgetCode || "";
+      const roomTypes = props.roomTypes || [];
+      const phone = props.phone || "";
+      const email = props.email || "";
+
+      if (widgetCode) {
+        return `<section class="booking-section section" id="rezervasyon"><div class="container"><h2 class="section-title">${title}</h2><p class="section-subtitle">${subtitle}</p><div class="booking-form-container">${widgetCode}</div></div></section>`;
+      }
+
+      const roomOptions = roomTypes.length > 0
+        ? roomTypes.map((r) => `<option value="${r}">${r}</option>`).join("")
+        : `<option>${t.select_room}</option>`;
+
+      let contactInfo = "";
+      if (phone || email) {
+        contactInfo = `<div style="text-align:center;margin-top:25px;padding-top:20px;border-top:1px solid #eee;color:#666;font-size:0.95rem">`;
+        if (phone) contactInfo += `<span>${t.phone}: <strong>${phone}</strong></span>`;
+        if (phone && email) contactInfo += ` &nbsp;|&nbsp; `;
+        if (email) contactInfo += `<span>Email: <strong>${email}</strong></span>`;
+        contactInfo += `</div>`;
+      }
+
+      return `<section class="booking-section section" id="rezervasyon"><div class="container"><h2 class="section-title">${title}</h2><p class="section-subtitle">${subtitle}</p><div class="booking-form-container"><form onsubmit="return false;"><div class="booking-form"><div class="booking-field"><label>${t.check_in}</label><input type="date" name="checkin"></div><div class="booking-field"><label>${t.check_out}</label><input type="date" name="checkout"></div><div class="booking-field"><label>${t.adults}</label><select name="adults"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div><div class="booking-field"><label>${t.children}</label><select name="children"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></div><div class="booking-field"><label>${t.room_type}</label><select name="room_type">${roomOptions}</select></div><div class="booking-field"><label>${t.your_name}</label><input type="text" name="name" placeholder="${t.your_name}"></div><div class="booking-field"><label>${t.your_email}</label><input type="email" name="email" placeholder="${t.your_email}"></div><div class="booking-field"><label>${t.phone}</label><input type="tel" name="phone" placeholder="${t.phone}"></div><div class="booking-submit"><button type="submit" class="btn">${t.make_reservation}</button></div></div></form>${contactInfo}</div></div></section>`;
     }
     case "footer": {
       const social = props.socialLinks || {};
@@ -196,6 +227,11 @@ const TRANSLATIONS = {
     subject: "Konu", message: "Mesajiniz", send: "Gonder",
     quick_links: "Hizli Erisim", contact_info: "Iletisim Bilgileri",
     all_rights: "Tum haklari saklidir", powered_by: "Powered by",
+    check_in: "Giris Tarihi", check_out: "Cikis Tarihi",
+    guests: "Misafir Sayisi", room_type: "Oda Tipi",
+    booking_title: "Rezervasyon", booking_subtitle: "Tatilinizi simdi planlayin",
+    select_room: "Oda Secin", adults: "Yetiskin", children: "Cocuk",
+    make_reservation: "Rezervasyon Yap", phone: "Telefon",
   },
   en: {
     home: "Home", about: "About", rooms: "Rooms", gallery: "Gallery",
@@ -204,6 +240,115 @@ const TRANSLATIONS = {
     subject: "Subject", message: "Your Message", send: "Send",
     quick_links: "Quick Links", contact_info: "Contact Information",
     all_rights: "All rights reserved", powered_by: "Powered by",
+    check_in: "Check-in", check_out: "Check-out",
+    guests: "Guests", room_type: "Room Type",
+    booking_title: "Reservation", booking_subtitle: "Plan your stay today",
+    select_room: "Select Room", adults: "Adults", children: "Children",
+    make_reservation: "Make Reservation", phone: "Phone",
+  },
+  de: {
+    home: "Startseite", about: "Uber uns", rooms: "Zimmer", gallery: "Galerie",
+    services: "Dienstleistungen", contact: "Kontakt", testimonials: "Bewertungen",
+    your_name: "Ihr Name", your_email: "Ihre E-Mail",
+    subject: "Betreff", message: "Ihre Nachricht", send: "Senden",
+    quick_links: "Schnellzugriff", contact_info: "Kontaktinformationen",
+    all_rights: "Alle Rechte vorbehalten", powered_by: "Powered by",
+    check_in: "Anreise", check_out: "Abreise",
+    guests: "Gaste", room_type: "Zimmertyp",
+    booking_title: "Reservierung", booking_subtitle: "Planen Sie Ihren Aufenthalt",
+    select_room: "Zimmer wahlen", adults: "Erwachsene", children: "Kinder",
+    make_reservation: "Reservierung vornehmen", phone: "Telefon",
+  },
+  fr: {
+    home: "Accueil", about: "A propos", rooms: "Chambres", gallery: "Galerie",
+    services: "Services", contact: "Contact", testimonials: "Temoignages",
+    your_name: "Votre nom", your_email: "Votre e-mail",
+    subject: "Sujet", message: "Votre message", send: "Envoyer",
+    quick_links: "Liens rapides", contact_info: "Coordonnees",
+    all_rights: "Tous droits reserves", powered_by: "Powered by",
+    check_in: "Arrivee", check_out: "Depart",
+    guests: "Voyageurs", room_type: "Type de chambre",
+    booking_title: "Reservation", booking_subtitle: "Planifiez votre sejour",
+    select_room: "Choisir la chambre", adults: "Adultes", children: "Enfants",
+    make_reservation: "Reserver", phone: "Telephone",
+  },
+  es: {
+    home: "Inicio", about: "Nosotros", rooms: "Habitaciones", gallery: "Galeria",
+    services: "Servicios", contact: "Contacto", testimonials: "Opiniones",
+    your_name: "Su nombre", your_email: "Su correo",
+    subject: "Asunto", message: "Su mensaje", send: "Enviar",
+    quick_links: "Enlaces rapidos", contact_info: "Informacion de contacto",
+    all_rights: "Todos los derechos reservados", powered_by: "Powered by",
+    check_in: "Llegada", check_out: "Salida",
+    guests: "Huespedes", room_type: "Tipo de habitacion",
+    booking_title: "Reserva", booking_subtitle: "Planifique su estancia",
+    select_room: "Seleccionar habitacion", adults: "Adultos", children: "Ninos",
+    make_reservation: "Hacer reserva", phone: "Telefono",
+  },
+  it: {
+    home: "Home", about: "Chi siamo", rooms: "Camere", gallery: "Galleria",
+    services: "Servizi", contact: "Contatti", testimonials: "Recensioni",
+    your_name: "Nome", your_email: "Email",
+    subject: "Oggetto", message: "Messaggio", send: "Invia",
+    quick_links: "Link rapidi", contact_info: "Informazioni di contatto",
+    all_rights: "Tutti i diritti riservati", powered_by: "Powered by",
+    check_in: "Check-in", check_out: "Check-out",
+    guests: "Ospiti", room_type: "Tipo di camera",
+    booking_title: "Prenotazione", booking_subtitle: "Pianifica il tuo soggiorno",
+    select_room: "Seleziona camera", adults: "Adulti", children: "Bambini",
+    make_reservation: "Prenota", phone: "Telefono",
+  },
+  ru: {
+    home: "Glavnaya", about: "O nas", rooms: "Nomera", gallery: "Galereya",
+    services: "Uslugi", contact: "Kontakty", testimonials: "Otzyvy",
+    your_name: "Vashe imya", your_email: "Vash email",
+    subject: "Tema", message: "Soobshchenie", send: "Otpravit",
+    quick_links: "Bystrye ssylki", contact_info: "Kontaktnaya informatsiya",
+    all_rights: "Vse prava zashchishcheny", powered_by: "Powered by",
+    check_in: "Zaseleniye", check_out: "Vyseleniye",
+    guests: "Gosti", room_type: "Tip nomera",
+    booking_title: "Bronirovaniye", booking_subtitle: "Zaplanirujte poezdku",
+    select_room: "Vybrat nomer", adults: "Vzroslyye", children: "Deti",
+    make_reservation: "Zabronirovat", phone: "Telefon",
+  },
+  ar: {
+    home: "الرئيسية", about: "من نحن", rooms: "الغرف", gallery: "المعرض",
+    services: "الخدمات", contact: "اتصل بنا", testimonials: "آراء الضيوف",
+    your_name: "الاسم", your_email: "البريد الإلكتروني",
+    subject: "الموضوع", message: "الرسالة", send: "إرسال",
+    quick_links: "روابط سريعة", contact_info: "معلومات الاتصال",
+    all_rights: "جميع الحقوق محفوظة", powered_by: "Powered by",
+    check_in: "تسجيل الوصول", check_out: "تسجيل المغادرة",
+    guests: "الضيوف", room_type: "نوع الغرفة",
+    booking_title: "الحجز", booking_subtitle: "خطط لإقامتك الآن",
+    select_room: "اختر الغرفة", adults: "بالغين", children: "أطفال",
+    make_reservation: "إجراء الحجز", phone: "الهاتف",
+  },
+  ja: {
+    home: "ホーム", about: "ホテルについて", rooms: "客室", gallery: "ギャラリー",
+    services: "サービス", contact: "お問い合わせ", testimonials: "お客様の声",
+    your_name: "お名前", your_email: "メールアドレス",
+    subject: "件名", message: "メッセージ", send: "送信",
+    quick_links: "クイックリンク", contact_info: "連絡先情報",
+    all_rights: "全著作権所有", powered_by: "Powered by",
+    check_in: "チェックイン", check_out: "チェックアウト",
+    guests: "人数", room_type: "客室タイプ",
+    booking_title: "ご予約", booking_subtitle: "ご滞在を計画しましょう",
+    select_room: "客室を選択", adults: "大人", children: "お子様",
+    make_reservation: "予約する", phone: "電話",
+  },
+  zh: {
+    home: "首页", about: "关于我们", rooms: "客房", gallery: "画廊",
+    services: "服务", contact: "联系我们", testimonials: "客户评价",
+    your_name: "您的姓名", your_email: "您的邮箱",
+    subject: "主题", message: "留言", send: "发送",
+    quick_links: "快速链接", contact_info: "联系信息",
+    all_rights: "版权所有", powered_by: "Powered by",
+    check_in: "入住", check_out: "退房",
+    guests: "客人", room_type: "房型",
+    booking_title: "预订", booking_subtitle: "立即规划您的住宿",
+    select_room: "选择客房", adults: "成人", children: "儿童",
+    make_reservation: "立即预订", phone: "电话",
   },
 };
 
@@ -223,7 +368,7 @@ export function generatePreviewHTML(sections, theme, lang = "tr") {
   const css = generateCSS(theme);
 
   return `<!DOCTYPE html>
-<html lang="tr">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
