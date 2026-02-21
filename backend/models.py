@@ -48,6 +48,9 @@ class ClientCreate(BaseModel):
     address: str = ""
     city: str = ""
     notes: str = ""
+    tags: List[str] = []
+    category: str = ""
+    custom_fields: Dict[str, Any] = {}
 
 
 class ClientUpdate(BaseModel):
@@ -58,6 +61,9 @@ class ClientUpdate(BaseModel):
     address: Optional[str] = None
     city: Optional[str] = None
     notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+    category: Optional[str] = None
+    custom_fields: Optional[Dict[str, Any]] = None
 
 
 # ============ AUTH ============
