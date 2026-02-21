@@ -738,6 +738,9 @@ export default function TemplateEditor() {
                       <CalendarDays size={14} className="mr-1" /> Rezervasyon
                     </Button>
                   </div>
+                  <Button variant="outline" size="sm" className="w-full mb-3" onClick={handleOpenBlockLibrary} data-testid="editor-block-library">
+                    <Library size={14} className="mr-1" /> Blok Kutuphanesi
+                  </Button>
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={project.sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                       {project.sections.map((section, idx) => (
