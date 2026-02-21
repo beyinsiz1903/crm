@@ -143,7 +143,7 @@ async def get_me(authorization: Optional[str] = Header(None)):
     user = await get_current_user(authorization)
     if not user:
         raise HTTPException(401, "Oturum gecersiz")
-    return {"id": user["id"], "email": user["email"], "name": user.get("name", "")}
+    return {"id": user["id"], "email": user["email"], "name": user.get("name", ""), "role": user.get("role", "admin")}
 
 @api_router.get("/auth/check")
 async def check_auth():
