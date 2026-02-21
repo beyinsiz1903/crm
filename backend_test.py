@@ -489,7 +489,34 @@ class CRMTester:
         
         return response
     
-    # ==================== DOMAIN TESTS (MOCK) ====================
+    # ==================== SEGMENTS TESTS ====================
+    
+    def test_get_segments_tags(self):
+        """Test getting all tags from leads and clients"""
+        response = self.make_request("GET", "/segments/tags")
+        
+        if not isinstance(response, list):
+            raise Exception("Expected list of tags")
+        
+        return response
+    
+    def test_get_segments_categories(self):
+        """Test getting all categories from clients"""
+        response = self.make_request("GET", "/segments/categories")
+        
+        if not isinstance(response, list):
+            raise Exception("Expected list of categories")
+        
+        return response
+    
+    def test_get_activity_log(self):
+        """Test getting activity log"""
+        response = self.make_request("GET", "/activity-log")
+        
+        if not isinstance(response, list):
+            raise Exception("Expected list of activities")
+        
+        return response
     
     def test_create_domain(self):
         """Test creating domain (MOCK)"""
