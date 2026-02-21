@@ -83,6 +83,13 @@ function App() {
                     <Route path="/templates" element={<TemplateGallery />} />
                     <Route path="/clients" element={<Clients />} />
                     <Route path="/projects" element={<Projects />} />
+                    <Route path="/leads" element={<Leads />} />
+                    <Route path="/pipeline" element={<Pipeline />} />
+                    <Route path="/campaigns" element={<Campaigns />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/forms" element={<FormBuilder />} />
+                    <Route path="/blog" element={<Blog />} />
+                    <Route path="/team" element={<Team />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>
