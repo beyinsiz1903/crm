@@ -658,79 +658,10 @@ class SectionPresetsBackendTester:
         except Exception as e:
             self.log_test("Cleanup Test Project", False, f"❌ Exception: {str(e)}")
     
-    async def run_all_tests(self):
-        """Run all backend tests"""
-        print(f"🧪 Starting Syroce CRM Backend API Tests")
-        print(f"🎯 Backend URL: {self.base_url}")
-        print("=" * 60)
-        
-        try:
-            # Test 1: Languages endpoint
-            await self.test_languages_endpoint()
-            
-            # Test 2: Existing endpoints
-            await self.test_existing_endpoints()
-            
-            # Test 3: Get template for project creation
-            self.template_id = await self.get_template_id()
-            if not self.template_id:
-                print("❌ Cannot continue tests without template ID")
-                return False
-            
-            # Test 4: Create test project
-            self.project_id = await self.create_test_project(self.template_id)
-            if not self.project_id:
-                print("❌ Cannot continue tests without project ID")
-                return False
-            
-            # Test 5: Publish/Unpublish functionality
-            await self.test_publish_unpublish(self.project_id)
-            
-            # Test 6: Project new fields (analytics, bundle_assets, language)
-            await self.test_project_new_fields(self.project_id)
-            
-            # Test 7: Export with analytics
-            await self.test_export_with_analytics(self.project_id)
-            
-            # Test 8: Booking section renderer
-            await self.test_booking_renderer(self.project_id)
-            
-            # Cleanup
-            await self.cleanup_test_project(self.project_id)
-            
-        except Exception as e:
-            print(f"❌ Fatal error in test suite: {str(e)}")
-        
-        finally:
-            await self.close()
-        
-        # Summary
-        print("\n" + "=" * 60)
-        print("🏁 TEST RESULTS SUMMARY")
-        print("=" * 60)
-        
-        total_tests = len(self.test_results)
-        passed_tests = sum(1 for result in self.test_results.values() if result["success"])
-        failed_tests = total_tests - passed_tests
-        
-        print(f"Total Tests: {total_tests}")
-        print(f"Passed: {passed_tests} ✅")
-        print(f"Failed: {failed_tests} ❌")
-        print(f"Success Rate: {(passed_tests/total_tests*100):.1f}%" if total_tests > 0 else "0%")
-        
-        if failed_tests > 0:
-            print("\n❌ FAILED TESTS:")
-            for test_name, result in self.test_results.items():
-                if not result["success"]:
-                    print(f"  • {test_name}: {result['details']}")
-        
-        return failed_tests == 0
-
-
 async def main():
     """Main test runner"""
-    tester = BackendTester(BACKEND_URL)
-    success = await tester.run_all_tests()
+    tester = SectionPresetsBackendTester(BACKEND_URL)
+    success = await tester.run_section_presets_tests()
     sys.exit(0 if success else 1)
 
 
