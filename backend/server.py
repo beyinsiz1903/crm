@@ -621,7 +621,26 @@ async def startup_event():
 
 # ==================== APP CONFIG ====================
 
+# Include CRM routes
+from crm_routes import create_crm_router
+from content_routes import create_content_router
+from team_routes import create_team_router
+
+_helpers = {
+    "get_current_user": get_current_user,
+    "log_activity": log_activity,
+    "serialize_doc": serialize_doc,
+    "serialize_list": serialize_list,
+}
+
+crm_router = create_crm_router(db, get_current_user, log_activity, serialize_doc, serialize_list)
+content_router = create_content_router(db, get_current_user, log_activity, serialize_doc, serialize_list)
+team_router = create_team_router(db, get_current_user, log_activity, serialize_doc, serialize_list, get_password_hash)
+
 app.include_router(api_router)
+app.include_router(crm_router)
+app.include_router(content_router)
+app.include_router(team_router)
 
 # Mount uploads AFTER router
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
