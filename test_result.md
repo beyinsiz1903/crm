@@ -320,6 +320,8 @@ agent_communication:
     - message: "Comprehensive backend testing completed. All 19 tests PASSED (100% success rate). Tested: languages endpoint (10 dil), publish/unpublish with live hosting, analytics injection (GA+custom code), booking section renderer, asset bundling export, all new project fields (analytics, bundle_assets, language), and existing endpoints compatibility."
     - agent: "testing"
     - message: "Frontend testing completed via code review and partial UI testing. All 7 frontend tasks VERIFIED and marked working=true. Authentication working (login/register flow functional). Template gallery accessible (30 templates visible). All API calls returning 200 OK. Code review confirms: (1) Drag-and-drop fully integrated with @dnd-kit, grip handles present (2) Booking section complete with all fields and data-testid attributes (3) 10 languages implemented with full TRANSLATIONS in previewRenderer (4) Analytics panel with GA ID and custom code fields in SEO tab (5) Publish button with state management and external link (6) Asset bundling toggle in Settings with visual state (7) Responsive editor with device modes and hints. All components use shadcn/ui. No critical issues found. Ready for user acceptance testing."
+    - agent: "testing"
+    - message: "Section Presets (Block Library) Backend testing completed successfully. All 9 tests PASSED (100% success rate). Tested NEW section-presets endpoints: GET empty list, POST create presets (hero & contact), GET all presets, GET with category/section_type filters, DELETE preset. All CRUD operations and filtering work correctly. Backend ready for frontend integration."
 
   - task: "Undo/Redo functionality (Ctrl+Z / Ctrl+Y)"
     implemented: true
