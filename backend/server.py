@@ -542,6 +542,10 @@ async def create_client(data: ClientCreate):
         "created_at": now,
         "updated_at": now,
     }
+    # Ensure tags, category, custom_fields exist
+    client_doc.setdefault("tags", [])
+    client_doc.setdefault("category", "")
+    client_doc.setdefault("custom_fields", {})
     await db.clients.insert_one(client_doc)
     await log_activity("client_added", f"'{data.hotel_name}' musterisi eklendi", client_doc["id"], "client")
     return serialize_doc(client_doc)
