@@ -662,6 +662,13 @@ class CRMTester:
         self.run_test("Create Domain", self.test_create_domain)
         self.run_test("Verify Domain (MOCK)", self.test_verify_domain)
         
+        # Segments Tests  
+        print("\n🏷️ SEGMENTS TESTS")
+        print("-" * 40)
+        self.run_test("Get Segments Tags", self.test_get_segments_tags)
+        self.run_test("Get Segments Categories", self.test_get_segments_categories)
+        self.run_test("Get Activity Log", self.test_get_activity_log)
+        
         # Final Summary
         print("\n" + "=" * 80)
         print("📊 TEST SUMMARY")
