@@ -1,30 +1,52 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Building2, Phone, Mail, MapPin, Edit, Trash2, X } from "lucide-react";
+import { Plus, Search, Building2, Phone, Mail, MapPin, Edit, Trash2, X, Tag, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import PageHeader from "@/components/PageHeader";
-import { getClients, createClient, updateClient, deleteClient } from "@/lib/api";
+import { getClients, createClient, updateClient, deleteClient, getCommunications, createCommunication } from "@/lib/api";
 
-const emptyForm = { hotel_name: "", contact_name: "", email: "", phone: "", address: "", city: "", notes: "" };
+const CATEGORIES = ["", "premium", "standart", "yeni", "vip", "potansiyel"];
+const COMM_TYPES = [
+  { value: "email", label: "Email", icon: "📧" },
+  { value: "phone", label: "Telefon", icon: "📞" },
+  { value: "meeting", label: "Toplanti", icon: "🤝" },
+  { value: "note", label: "Not", icon: "📝" },
+];
+
+const emptyForm = { hotel_name: "", contact_name: "", email: "", phone: "", address: "", city: "", notes: "", tags: [], category: "", custom_fields: {} };
 
 export default function Clients() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [tagInput, setTagInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [comms, setComms] = useState([]);
+  const [commForm, setCommForm] = useState({ comm_type: "note", subject: "", content: "", direction: "outbound" });
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
   const load = () => {
     setLoading(true);
     getClients(search || null)
-      .then(setClients)
+      .then((data) => {
+        if (categoryFilter !== "all") {
+          setClients(data.filter(c => c.category === categoryFilter));
+        } else {
+          setClients(data);
+        }
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
