@@ -134,8 +134,9 @@ async def login(data: LoginRequest):
     user = await db.users.find_one({"email": data.email}, {"_id": 0})
     if not user or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(401, "Gecersiz e-posta veya sifre")
-    token = create_access_token({"user_id": user["id"], "email": user["email"]})
-    return {"token": token, "user": {"id": user["id"], "email": user["email"], "name": user.get("name", "")}}
+    role = user.get("role", "admin")
+    token = create_access_token({"user_id": user["id"], "email": user["email"], "role": role})
+    return {"token": token, "user": {"id": user["id"], "email": user["email"], "name": user.get("name", ""), "role": role}}
 
 @api_router.get("/auth/me")
 async def get_me(authorization: Optional[str] = Header(None)):
