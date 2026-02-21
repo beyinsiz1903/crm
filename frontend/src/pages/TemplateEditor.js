@@ -700,11 +700,17 @@ export default function TemplateEditor() {
         )}
         {/* Undo/Redo */}
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleUndo} disabled={undoStack.length === 0} title="Geri Al (Ctrl+Z)" data-testid="editor-undo">
+          <Button variant="ghost" size="icon" className="h-7 w-7 relative" onClick={handleUndo} disabled={undoStack.length === 0} title={`Geri Al (Ctrl+Z) — ${undoStack.length} adim`} data-testid="editor-undo">
             <Undo2 size={14} />
+            {undoStack.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] rounded-full bg-primary text-[9px] text-primary-foreground flex items-center justify-center font-bold leading-none">{undoStack.length}</span>
+            )}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRedo} disabled={redoStack.length === 0} title="Yinele (Ctrl+Y)" data-testid="editor-redo">
+          <Button variant="ghost" size="icon" className="h-7 w-7 relative" onClick={handleRedo} disabled={redoStack.length === 0} title={`Yinele (Ctrl+Y) — ${redoStack.length} adim`} data-testid="editor-redo">
             <Redo2 size={14} />
+            {redoStack.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] rounded-full bg-accent text-[9px] text-accent-foreground flex items-center justify-center font-bold leading-none">{redoStack.length}</span>
+            )}
           </Button>
         </div>
         {/* Publish button */}
