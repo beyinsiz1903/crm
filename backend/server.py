@@ -363,6 +363,62 @@ async def preview_html(data: dict):
     html = generate_full_html(data)
     return Response(content=html, media_type="text/html")
 
+# ==================== PUBLISH / LIVE HOSTING ====================
+
+@api_router.post("/projects/{project_id}/publish")
+async def publish_project(project_id: str):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Proje bulunamadi")
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"published": True, "status": "published", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    await log_activity("project_published", f"'{project['name']}' yayinlandi", project_id, "project")
+    return {"published": True, "live_url": f"/api/hosted/{project_id}"}
+
+@api_router.post("/projects/{project_id}/unpublish")
+async def unpublish_project(project_id: str):
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Proje bulunamadi")
+    await db.projects.update_one(
+        {"id": project_id},
+        {"$set": {"published": False, "status": "draft", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    await log_activity("project_unpublished", f"'{project['name']}' yayindan kaldirildi", project_id, "project")
+    return {"published": False}
+
+@api_router.get("/hosted/{project_id}")
+async def hosted_project(project_id: str):
+    """Serve published project as live website."""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(404, "Proje bulunamadi")
+    if not project.get("published", False):
+        raise HTTPException(403, "Bu proje henuz yayinlanmamis")
+    html = generate_full_html(project)
+    return Response(content=html, media_type="text/html")
+
+# ==================== LANGUAGES ====================
+
+@api_router.get("/languages")
+async def get_available_languages():
+    """Return all available languages for website generation."""
+    lang_info = {
+        "tr": {"name": "Turkce", "native": "Turkce", "flag": "TR"},
+        "en": {"name": "English", "native": "English", "flag": "GB"},
+        "de": {"name": "Almanca", "native": "Deutsch", "flag": "DE"},
+        "fr": {"name": "Fransizca", "native": "Francais", "flag": "FR"},
+        "es": {"name": "Ispanyolca", "native": "Espanol", "flag": "ES"},
+        "it": {"name": "Italyanca", "native": "Italiano", "flag": "IT"},
+        "ru": {"name": "Rusca", "native": "Russkiy", "flag": "RU"},
+        "ar": {"name": "Arapca", "native": "العربية", "flag": "SA"},
+        "ja": {"name": "Japonca", "native": "日本語", "flag": "JP"},
+        "zh": {"name": "Cince", "native": "中文", "flag": "CN"},
+    }
+    return lang_info
+
 # ==================== VERSIONING ====================
 
 @api_router.get("/projects/{project_id}/versions")
