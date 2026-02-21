@@ -20,7 +20,11 @@ from models import (
     ClientCreate, ClientUpdate, LoginRequest, RegisterRequest
 )
 from templates_data import generate_all_templates
-from export_service import generate_full_html, create_export_zip, create_multipage_export_zip
+from export_service import (
+    generate_full_html, create_export_zip, create_multipage_export_zip,
+    create_export_zip_with_assets, create_multipage_export_zip_with_assets,
+    TRANSLATIONS
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
