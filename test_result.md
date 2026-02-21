@@ -186,11 +186,14 @@ backend:
     file: "backend/content_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET/POST/PUT/DELETE /api/forms, GET /api/forms/{id}/submissions, POST /api/forms/{id}/submit (public)."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Form endpoints tested successfully. Verified: POST /api/forms creates form with name, form_type='contact', fields array (text, email, textarea types), POST /api/forms/{id}/submit (public endpoint, no auth) successfully submits form data and returns success message, GET /api/forms/{id}/submissions returns submitted form data. Public form submission working correctly without authentication."
 
   - task: "Blog posts CRUD endpoints"
     implemented: true
