@@ -246,6 +246,7 @@ export default function TemplateEditor() {
 
   const updateSectionProp = (sectionId, propPath, value) => {
     setProject((prev) => {
+      pushUndoState(prev);
       const updated = { ...prev };
       updated.sections = prev.sections.map((s) => {
         if (s.id !== sectionId) return s;
