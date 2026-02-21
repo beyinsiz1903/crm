@@ -34,6 +34,9 @@ class ProjectUpdate(BaseModel):
     seo: Optional[Dict[str, Any]] = None
     language: Optional[str] = None
     export_mode: Optional[str] = None  # "single" or "multi"
+    analytics: Optional[Dict[str, Any]] = None  # {ga_id, custom_head_code}
+    published: Optional[bool] = None
+    bundle_assets: Optional[bool] = None
 
 
 # ============ CLIENTS ============
