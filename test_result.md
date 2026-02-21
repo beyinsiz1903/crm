@@ -276,11 +276,14 @@ backend:
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Register adds role (first user=admin). Login/me returns role. JWT includes role."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Enhanced user model tested successfully. Verified: POST /api/auth/register creates user with role assignment, POST /api/auth/login returns user data including role field, GET /api/auth/me returns current user with role field included. User registration, login, and role management working correctly with proper JWT token handling."
 
 frontend:
   - task: "Leads page with scoring, filtering, timeline"
