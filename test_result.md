@@ -201,11 +201,14 @@ backend:
     file: "backend/content_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET/POST/PUT/DELETE /api/blog/posts. Auto slug generation, author tracking."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Blog endpoints tested successfully. Verified: POST /api/blog/posts creates blog post with title, content, excerpt, tags, status='draft', auto-generates slug from title, tracks author info. PUT /api/blog/posts/{id} successfully updates blog post (tested status change from 'draft' to 'published'). Auto-slug generation working correctly."
 
   - task: "Domain management endpoints (MOCK)"
     implemented: true
