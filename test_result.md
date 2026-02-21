@@ -126,11 +126,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET /api/pipeline/stages, GET /api/pipeline/board, POST/PUT/DELETE /api/pipeline/stages. Auto-seeds 7 default stages."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Pipeline endpoints tested successfully. Verified: GET /api/pipeline/stages returns 7 default stages (new, contacted, qualified, proposal, negotiation, won, lost) with proper structure (id, name, key, order, color), GET /api/pipeline/board returns Kanban board object with stage data and leads grouped by stage."
 
   - task: "Communications timeline endpoints"
     implemented: true
