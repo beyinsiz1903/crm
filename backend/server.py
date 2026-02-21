@@ -94,13 +94,14 @@ def serialize_doc(doc):
 def serialize_list(docs):
     return [serialize_doc(d) for d in docs]
 
-async def log_activity(activity_type: str, message: str, entity_id: str = "", entity_type: str = ""):
+async def log_activity(activity_type: str, message: str, entity_id: str = "", entity_type: str = "", user_id: str = ""):
     activity = {
         "id": str(uuid.uuid4()),
         "type": activity_type,
         "message": message,
         "entity_id": entity_id,
         "entity_type": entity_type,
+        "user_id": user_id,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.activity_log.insert_one(activity)
