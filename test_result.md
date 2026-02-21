@@ -156,11 +156,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET/POST/PUT/DELETE /api/campaigns, POST /api/campaigns/{id}/activate, POST /api/campaigns/{id}/pause. Mock stats on activate."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Campaign endpoints tested successfully. Verified: POST /api/campaigns creates campaign with name, subject, content, campaign_type='single', starts in 'draft' status. POST /api/campaigns/{id}/activate changes status to 'active' and generates MOCK stats (sent, opened, clicked, bounced counts). POST /api/campaigns/{id}/pause changes status to 'paused'. MOCK functionality working as expected."
 
   - task: "Reports overview, pipeline, leads, activity endpoints"
     implemented: true
