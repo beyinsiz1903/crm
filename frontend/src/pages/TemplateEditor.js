@@ -171,6 +171,31 @@ export default function TemplateEditor() {
     setPreviewHtml(generatePreviewHTML(sections, theme, lang || "tr"));
   }, []);
 
+  const autoSave = useCallback((updatedProject) => {
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(async () => {
+      setSaving(true);
+      try {
+        await updateProject(updatedProject.id, {
+          theme: updatedProject.theme,
+          sections: updatedProject.sections,
+          name: updatedProject.name,
+          seo: updatedProject.seo,
+          language: updatedProject.language,
+          export_mode: updatedProject.export_mode,
+          analytics: updatedProject.analytics,
+          bundle_assets: updatedProject.bundle_assets,
+        });
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      } catch (err) {
+        console.error("Auto-save failed:", err);
+      } finally {
+        setSaving(false);
+      }
+    }, 800);
+  }, []);
+
   // ==================== UNDO/REDO ====================
   const pushUndoState = useCallback((proj) => {
     if (isUndoRedo.current) return;
