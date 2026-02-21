@@ -2,9 +2,18 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
+} from "@dnd-kit/core";
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates,
+  useSortable, verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   ArrowLeft, Save, Download, Monitor, Tablet, Smartphone, Eye,
-  EyeOff, ChevronUp, ChevronDown, GripVertical, Plus, Trash2, Check,
-  Globe, History, Copy, Search as SearchIcon, FileText, Settings2
+  EyeOff, Plus, Trash2, Check,
+  Globe, History, Copy, Search as SearchIcon, Settings2, Send,
+  CalendarDays, BarChart3, ExternalLink, Package, GripVertical
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +27,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import ImageUpload from "@/components/ImageUpload";
 import {
   getProject, updateProject, exportProject,
-  cloneTemplateFromProject, getVersions, createVersion, restoreVersion
+  cloneTemplateFromProject, getVersions, createVersion, restoreVersion,
+  publishProject, unpublishProject
 } from "@/lib/api";
 import { generatePreviewHTML } from "@/lib/previewRenderer";
 
@@ -26,6 +36,7 @@ const SECTION_LABELS = {
   header: "Baslik", hero: "Hero Banner", about: "Hakkimizda", rooms: "Odalar",
   gallery: "Galeri", services: "Hizmetler", testimonials: "Yorumlar",
   contact: "Iletisim", banner: "CTA Banner", footer: "Alt Bilgi",
+  booking: "Rezervasyon",
 };
 
 const FONT_OPTIONS = [
@@ -36,6 +47,60 @@ const FONT_OPTIONS = [
   "'Space Grotesk', sans-serif", "'DM Sans', sans-serif", "'Roboto', sans-serif",
   "'Josefin Sans', sans-serif", "'Comfortaa', sans-serif", "'Bebas Neue', sans-serif",
 ];
+
+const LANGUAGE_OPTIONS = [
+  { value: "tr", label: "Turkce", flag: "TR" },
+  { value: "en", label: "English", flag: "GB" },
+  { value: "de", label: "Deutsch", flag: "DE" },
+  { value: "fr", label: "Francais", flag: "FR" },
+  { value: "es", label: "Espanol", flag: "ES" },
+  { value: "it", label: "Italiano", flag: "IT" },
+  { value: "ru", label: "Russkiy", flag: "RU" },
+  { value: "ar", label: "العربية", flag: "SA" },
+  { value: "ja", label: "日本語", flag: "JP" },
+  { value: "zh", label: "中文", flag: "CN" },
+];
+
+// ============ Sortable Section Item ============
+function SortableSectionItem({ section, idx, activeSection, setActiveSection, toggleSectionVisibility, removeSection, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 100 : "auto",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div
+        className={`section-item ${activeSection === section.id ? "active" : ""}`}
+        onClick={() => setActiveSection(activeSection === section.id ? null : section.id)}
+        data-testid={`editor-section-${section.type}-${idx}`}
+      >
+        <button {...attributes} {...listeners} className="p-1 hover:bg-muted rounded cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()}>
+          <GripVertical size={14} className="text-muted-foreground flex-shrink-0" />
+        </button>
+        <span className={`text-sm flex-1 ${!section.visible ? "line-through opacity-50" : ""}`}>
+          {SECTION_LABELS[section.type] || section.title}
+        </span>
+        <div className="flex items-center gap-0.5">
+          <button onClick={(e) => { e.stopPropagation(); toggleSectionVisibility(section.id); }} className="p-1 hover:bg-muted rounded">
+            {section.visible !== false ? <Eye size={12} /> : <EyeOff size={12} />}
+          </button>
+          {(section.type === "banner" || section.type === "booking") && (
+            <button onClick={(e) => { e.stopPropagation(); removeSection(section.id); }} className="p-1 hover:bg-destructive/20 rounded text-destructive"><Trash2 size={12} /></button>
+          )}
+        </div>
+      </div>
+      {activeSection === section.id && (
+        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="px-3 py-4 space-y-3 bg-muted/20 rounded-lg mt-1 mb-2">
+          {children}
+        </motion.div>
+      )}
+    </div>
+  );
+}
 
 export default function TemplateEditor() {
   const { projectId } = useParams();
@@ -52,15 +117,24 @@ export default function TemplateEditor() {
   const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateCategory, setTemplateCategory] = useState("custom");
+  const [publishing, setPublishing] = useState(false);
   const saveTimeout = useRef(null);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     getProject(projectId)
       .then((p) => {
-        // Ensure seo and new fields exist
         if (!p.seo) p.seo = { title: "", description: "", keywords: "", og_image: "" };
         if (!p.language) p.language = "tr";
         if (!p.export_mode) p.export_mode = "single";
+        if (!p.analytics) p.analytics = { ga_id: "", custom_head_code: "" };
+        if (p.published === undefined) p.published = false;
+        if (p.bundle_assets === undefined) p.bundle_assets = false;
         setProject(p);
         setPreviewHtml(generatePreviewHTML(p.sections, p.theme, p.language));
       })
@@ -84,6 +158,8 @@ export default function TemplateEditor() {
           seo: updatedProject.seo,
           language: updatedProject.language,
           export_mode: updatedProject.export_mode,
+          analytics: updatedProject.analytics,
+          bundle_assets: updatedProject.bundle_assets,
         });
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
@@ -141,6 +217,14 @@ export default function TemplateEditor() {
     });
   };
 
+  const updateAnalytics = (key, value) => {
+    setProject((prev) => {
+      const updated = { ...prev, analytics: { ...prev.analytics, [key]: value } };
+      autoSave(updated);
+      return updated;
+    });
+  };
+
   const updateLanguage = (lang) => {
     setProject((prev) => {
       const updated = { ...prev, language: lang };
@@ -158,6 +242,14 @@ export default function TemplateEditor() {
     });
   };
 
+  const updateBundleAssets = (val) => {
+    setProject((prev) => {
+      const updated = { ...prev, bundle_assets: val };
+      autoSave(updated);
+      return updated;
+    });
+  };
+
   const toggleSectionVisibility = (sectionId) => {
     setProject((prev) => {
       const updated = { ...prev };
@@ -170,13 +262,16 @@ export default function TemplateEditor() {
     });
   };
 
-  const moveSection = (idx, dir) => {
+  // Drag-and-drop section reorder
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
     setProject((prev) => {
-      const sections = [...prev.sections];
-      const newIdx = idx + dir;
-      if (newIdx < 0 || newIdx >= sections.length) return prev;
-      [sections[idx], sections[newIdx]] = [sections[newIdx], sections[idx]];
-      const updated = { ...prev, sections };
+      const oldIndex = prev.sections.findIndex((s) => s.id === active.id);
+      const newIndex = prev.sections.findIndex((s) => s.id === over.id);
+      const newSections = arrayMove(prev.sections, oldIndex, newIndex);
+      const updated = { ...prev, sections: newSections };
       updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       return updated;
@@ -196,6 +291,35 @@ export default function TemplateEditor() {
           backgroundImage: "",
           ctaText: "Simdi Rezervasyon Yapin",
           ctaLink: "#iletisim",
+        },
+      };
+      const footerIdx = prev.sections.findIndex((s) => s.type === "footer");
+      const sections = footerIdx >= 0
+        ? [...prev.sections.slice(0, footerIdx), newSection, ...prev.sections.slice(footerIdx)]
+        : [...prev.sections, newSection];
+      const updated = { ...prev, sections };
+      updatePreview(updated.sections, updated.theme, updated.language);
+      autoSave(updated);
+      setActiveSection(newSection.id);
+      return updated;
+    });
+  };
+
+  const addBookingSection = () => {
+    setProject((prev) => {
+      const newSection = {
+        id: crypto.randomUUID(),
+        type: "booking",
+        title: "Rezervasyon",
+        visible: true,
+        props: {
+          title: "",
+          subtitle: "",
+          bookingUrl: "",
+          phone: "",
+          email: "",
+          roomTypes: [],
+          widgetCode: "",
         },
       };
       const footerIdx = prev.sections.findIndex((s) => s.type === "footer");
@@ -246,6 +370,8 @@ export default function TemplateEditor() {
         seo: project.seo,
         language: project.language,
         export_mode: project.export_mode,
+        analytics: project.analytics,
+        bundle_assets: project.bundle_assets,
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -253,6 +379,29 @@ export default function TemplateEditor() {
       console.error(err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    setPublishing(true);
+    try {
+      await handleSave();
+      if (project.published) {
+        await unpublishProject(projectId);
+        setProject((p) => ({ ...p, published: false, status: "draft" }));
+      } else {
+        const result = await publishProject(projectId);
+        setProject((p) => ({ ...p, published: true, status: "published" }));
+        // Open hosted URL in new tab
+        if (result.live_url) {
+          const backendUrl = process.env.REACT_APP_BACKEND_URL;
+          window.open(`${backendUrl}${result.live_url}`, "_blank");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -274,6 +423,9 @@ export default function TemplateEditor() {
       if (!restored.seo) restored.seo = { title: "", description: "", keywords: "", og_image: "" };
       if (!restored.language) restored.language = "tr";
       if (!restored.export_mode) restored.export_mode = "single";
+      if (!restored.analytics) restored.analytics = { ga_id: "", custom_head_code: "" };
+      if (restored.published === undefined) restored.published = false;
+      if (restored.bundle_assets === undefined) restored.bundle_assets = false;
       setProject(restored);
       updatePreview(restored.sections, restored.theme, restored.language);
     } catch (err) {
@@ -304,6 +456,11 @@ export default function TemplateEditor() {
     }
   };
 
+  const openHostedUrl = () => {
+    const backendUrl = process.env.REACT_APP_BACKEND_URL;
+    window.open(`${backendUrl}/api/hosted/${projectId}`, "_blank");
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
@@ -329,16 +486,18 @@ export default function TemplateEditor() {
           data-testid="editor-project-name"
         />
         <div className="flex-1" />
-        {/* Language toggle */}
-        <Button
-          variant={project.language === "en" ? "default" : "outline"}
-          size="sm"
-          className="h-7 text-xs gap-1"
-          onClick={() => updateLanguage(project.language === "en" ? "tr" : "en")}
-          data-testid="editor-language-toggle"
-        >
-          <Globe size={12} /> {project.language === "en" ? "EN" : "TR"}
-        </Button>
+        {/* Language select */}
+        <Select value={project.language || "tr"} onValueChange={updateLanguage}>
+          <SelectTrigger className="h-7 w-[90px] text-[11px]" data-testid="editor-language-toggle">
+            <Globe size={12} className="mr-1" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {LANGUAGE_OPTIONS.map((l) => (
+              <SelectItem key={l.value} value={l.value}>{l.flag} {l.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {/* Device toggles */}
         <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
           {[
@@ -364,11 +523,27 @@ export default function TemplateEditor() {
             <Check size={12} className="mr-1" /> Kaydedildi
           </Badge>
         )}
+        {/* Publish button */}
+        <Button
+          variant={project.published ? "default" : "outline"}
+          size="sm"
+          className={`h-7 text-xs ${project.published ? "bg-green-600 hover:bg-green-700" : ""}`}
+          onClick={handlePublish}
+          disabled={publishing}
+          data-testid="editor-publish-button"
+        >
+          <Send size={12} className="mr-1" /> {publishing ? "..." : project.published ? "Yayinda" : "Yayinla"}
+        </Button>
+        {project.published && (
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openHostedUrl} title="Canli siteyi ac" data-testid="editor-open-hosted">
+            <ExternalLink size={14} />
+          </Button>
+        )}
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleOpenVersions} data-testid="editor-versions-button">
           <History size={12} className="mr-1" /> Versiyon
         </Button>
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setTemplateName(project.name); setShowSaveAsTemplate(true); }} data-testid="editor-save-as-template">
-          <Copy size={12} className="mr-1" /> Sablon Kaydet
+          <Copy size={12} className="mr-1" /> Sablon
         </Button>
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving} data-testid="template-editor-save-button">
           <Save size={12} className="mr-1" /> {saving ? "..." : "Kaydet"}
@@ -394,38 +569,31 @@ export default function TemplateEditor() {
             <TabsContent value="sections" className="flex-1 overflow-hidden mt-0">
               <ScrollArea className="h-full">
                 <div className="p-3 space-y-1">
-                  <Button variant="outline" size="sm" className="w-full mb-3" onClick={addBannerSection} data-testid="editor-add-banner">
-                    <Plus size={14} className="mr-1" /> Banner Ekle
-                  </Button>
-                  {project.sections.map((section, idx) => (
-                    <div key={section.id}>
-                      <div
-                        className={`section-item ${activeSection === section.id ? "active" : ""}`}
-                        onClick={() => setActiveSection(activeSection === section.id ? null : section.id)}
-                        data-testid={`editor-section-${section.type}-${idx}`}
-                      >
-                        <GripVertical size={14} className="text-muted-foreground flex-shrink-0" />
-                        <span className={`text-sm flex-1 ${!section.visible ? "line-through opacity-50" : ""}`}>
-                          {SECTION_LABELS[section.type] || section.title}
-                        </span>
-                        <div className="flex items-center gap-0.5">
-                          <button onClick={(e) => { e.stopPropagation(); moveSection(idx, -1); }} className="p-1 hover:bg-muted rounded"><ChevronUp size={12} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); moveSection(idx, 1); }} className="p-1 hover:bg-muted rounded"><ChevronDown size={12} /></button>
-                          <button onClick={(e) => { e.stopPropagation(); toggleSectionVisibility(section.id); }} className="p-1 hover:bg-muted rounded">
-                            {section.visible !== false ? <Eye size={12} /> : <EyeOff size={12} />}
-                          </button>
-                          {section.type === "banner" && (
-                            <button onClick={(e) => { e.stopPropagation(); removeSection(section.id); }} className="p-1 hover:bg-destructive/20 rounded text-destructive"><Trash2 size={12} /></button>
-                          )}
-                        </div>
-                      </div>
-                      {activeSection === section.id && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className="px-3 py-4 space-y-3 bg-muted/20 rounded-lg mt-1 mb-2">
-                          <SectionForm section={section} onUpdate={(prop, val) => updateSectionProp(section.id, prop, val)} />
-                        </motion.div>
-                      )}
-                    </div>
-                  ))}
+                  <div className="flex gap-2 mb-3">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={addBannerSection} data-testid="editor-add-banner">
+                      <Plus size={14} className="mr-1" /> Banner
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={addBookingSection} data-testid="editor-add-booking">
+                      <CalendarDays size={14} className="mr-1" /> Rezervasyon
+                    </Button>
+                  </div>
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={project.sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                      {project.sections.map((section, idx) => (
+                        <SortableSectionItem
+                          key={section.id}
+                          section={section}
+                          idx={idx}
+                          activeSection={activeSection}
+                          setActiveSection={setActiveSection}
+                          toggleSectionVisibility={toggleSectionVisibility}
+                          removeSection={removeSection}
+                        >
+                          <SectionForm section={section} onUpdate={(prop, val) => updateSectionProp(section.id, prop, val)} deviceMode={deviceMode} />
+                        </SortableSectionItem>
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -466,6 +634,17 @@ export default function TemplateEditor() {
                       <SelectContent>{FONT_OPTIONS.map((f) => (<SelectItem key={f} value={f}><span style={{ fontFamily: f }}>{f.split("'")[1] || f.split(",")[0]}</span></SelectItem>))}</SelectContent>
                     </Select>
                   </div>
+                  {/* Responsive hint */}
+                  {deviceMode !== "desktop" && (
+                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                      <p className="text-[11px] text-primary font-medium">
+                        {deviceMode === "tablet" ? "Tablet" : "Mobil"} Modu Aktif
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Tema degisiklikleri tum cihazlara uygulanir. Onizlemede {deviceMode === "tablet" ? "tablet" : "mobil"} gorunum aktif.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -500,6 +679,23 @@ export default function TemplateEditor() {
                     <p className="text-[11px] text-green-400 font-mono">www.otel.com</p>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{project.seo?.description || "Sayfa aciklamasi burada gorunecek..."}</p>
                   </div>
+
+                  <Separator />
+
+                  {/* Analytics */}
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <BarChart3 size={12} /> Analytics & Izleme
+                  </h3>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Google Analytics ID</label>
+                    <Input value={project.analytics?.ga_id || ""} onChange={(e) => updateAnalytics("ga_id", e.target.value)} className="h-8 text-sm font-mono" data-testid="editor-analytics-ga-id" placeholder="G-XXXXXXXXXX" />
+                    <p className="text-[10px] text-muted-foreground mt-1">Google Analytics 4 olcum kimligini girin.</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Ozel Izleme Kodu (Head)</label>
+                    <Textarea value={project.analytics?.custom_head_code || ""} onChange={(e) => updateAnalytics("custom_head_code", e.target.value)} className="text-sm min-h-[80px] font-mono" data-testid="editor-analytics-custom-code" placeholder="<!-- Facebook Pixel, Hotjar, vb. -->" />
+                    <p className="text-[10px] text-muted-foreground mt-1">Export ve canli sitede head bolumune eklenir.</p>
+                  </div>
                 </div>
               </ScrollArea>
             </TabsContent>
@@ -516,8 +712,9 @@ export default function TemplateEditor() {
                     <Select value={project.language || "tr"} onValueChange={updateLanguage}>
                       <SelectTrigger className="h-9" data-testid="editor-settings-language"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="tr">Turkce (TR)</SelectItem>
-                        <SelectItem value="en">English (EN)</SelectItem>
+                        {LANGUAGE_OPTIONS.map((l) => (
+                          <SelectItem key={l.value} value={l.value}>{l.flag} {l.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <p className="text-[10px] text-muted-foreground mt-1">Iletisim formu, footer ve navigasyon metinleri bu dilde gorunur.</p>
@@ -539,6 +736,48 @@ export default function TemplateEditor() {
                     </p>
                   </div>
                   <Separator />
+                  {/* Asset Bundling */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-2">
+                      <Package size={12} /> Asset Bundling
+                    </label>
+                    <div
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${project.bundle_assets ? "border-primary bg-primary/5" : "border-border bg-muted/20"}`}
+                      onClick={() => updateBundleAssets(!project.bundle_assets)}
+                      data-testid="editor-settings-bundle-assets"
+                    >
+                      <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${project.bundle_assets ? "bg-primary" : "bg-muted"}`}>
+                        <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${project.bundle_assets ? "translate-x-5" : "translate-x-0"}`} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium">{project.bundle_assets ? "Aktif" : "Kapali"}</p>
+                        <p className="text-[10px] text-muted-foreground">Harici gorseller ZIP icine dahil edilir (offline calisan paket).</p>
+                      </div>
+                    </div>
+                  </div>
+                  <Separator />
+                  {/* Publish Status */}
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block flex items-center gap-2">
+                      <Send size={12} /> Yayinlama Durumu
+                    </label>
+                    <div className={`p-3 rounded-lg border ${project.published ? "border-green-500/30 bg-green-500/5" : "border-border bg-muted/20"}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-medium">{project.published ? "Canli Yayinda" : "Yayinda Degil"}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {project.published ? "Proje canli URL uzerinden erisime acik." : "Yayinlamak icin ustteki 'Yayinla' butonunu kullanin."}
+                          </p>
+                        </div>
+                        {project.published && (
+                          <Button variant="outline" size="sm" className="h-7 text-[10px]" onClick={openHostedUrl}>
+                            <ExternalLink size={10} className="mr-1" /> Ac
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <Separator />
                   <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Islemler</h3>
                     <div className="space-y-2">
@@ -547,9 +786,6 @@ export default function TemplateEditor() {
                       </Button>
                       <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => { setTemplateName(project.name); setShowSaveAsTemplate(true); }}>
                         <Copy size={14} className="mr-2" /> Sablon Olarak Kaydet
-                      </Button>
-                      <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleOpenVersions}>
-                        <FileText size={14} className="mr-2" /> Versiyon Gecmisi
                       </Button>
                     </div>
                   </div>
@@ -628,16 +864,16 @@ export default function TemplateEditor() {
 }
 
 // ============ Section Form Component ============
-function SectionForm({ section, onUpdate }) {
+function SectionForm({ section, onUpdate, deviceMode }) {
   const props = section.props || {};
 
-  const Field = ({ label, prop, multiline }) => (
+  const Field = ({ label, prop, multiline, placeholder }) => (
     <div>
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
       {multiline ? (
-        <Textarea value={props[prop] || ""} onChange={(e) => onUpdate(prop, e.target.value)} className="text-sm min-h-[80px]" data-testid={`editor-field-${section.type}-${prop}`} />
+        <Textarea value={props[prop] || ""} onChange={(e) => onUpdate(prop, e.target.value)} className="text-sm min-h-[80px]" data-testid={`editor-field-${section.type}-${prop}`} placeholder={placeholder} />
       ) : (
-        <Input value={typeof props[prop] === "string" ? props[prop] : (props[prop] || "")} onChange={(e) => onUpdate(prop, e.target.value)} className="h-8 text-sm" data-testid={`editor-field-${section.type}-${prop}`} />
+        <Input value={typeof props[prop] === "string" ? props[prop] : (props[prop] || "")} onChange={(e) => onUpdate(prop, e.target.value)} className="h-8 text-sm" data-testid={`editor-field-${section.type}-${prop}`} placeholder={placeholder} />
       )}
     </div>
   );
@@ -656,25 +892,67 @@ function SectionForm({ section, onUpdate }) {
     <ImageUpload value={props[prop] || ""} onChange={(v) => onUpdate(prop, v)} label={label} testId={`editor-field-${section.type}-${prop}`} />
   );
 
+  // Responsive hint for certain sections
+  const responsiveHint = deviceMode !== "desktop" ? (
+    <div className="p-2 bg-primary/10 rounded text-[10px] text-primary">
+      {deviceMode === "mobile" ? "Mobil goruntuleme: Bazi ogeler tek sutuna dusecek" : "Tablet goruntuleme: Grid 2 sutuna dusecek"}
+    </div>
+  ) : null;
+
   switch (section.type) {
     case "header":
       return (<div className="space-y-3"><Field label="Otel Adi" prop="hotelName" /><ImageField label="Logo URL" prop="logo" /><LayoutSelect prop="style" options={[{ value: "transparent", label: "Seffaf" }, { value: "solid", label: "Dolu" }]} /></div>);
     case "hero":
-      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Alt Baslik" prop="subtitle" /><ImageField label="Arka Plan Gorseli" prop="backgroundImage" /><Field label="Buton Metni" prop="ctaText" /><Field label="Buton Linki" prop="ctaLink" /><Field label="Overlay Opakligi (0-1)" prop="overlayOpacity" /><LayoutSelect prop="layout" options={[{ value: "fullscreen", label: "Tam Ekran" }, { value: "centered", label: "Ortalanmis" }, { value: "split", label: "Bolumlenmis" }]} /></div>);
+      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Alt Baslik" prop="subtitle" /><ImageField label="Arka Plan Gorseli" prop="backgroundImage" /><Field label="Buton Metni" prop="ctaText" /><Field label="Buton Linki" prop="ctaLink" /><Field label="Overlay Opakligi (0-1)" prop="overlayOpacity" /><LayoutSelect prop="layout" options={[{ value: "fullscreen", label: "Tam Ekran" }, { value: "centered", label: "Ortalanmis" }, { value: "split", label: "Bolumlenmis" }]} />{responsiveHint}</div>);
     case "about":
-      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Aciklama" prop="description" multiline /><ImageField label="Gorsel" prop="image" /><LayoutSelect prop="layout" options={[{ value: "left-image", label: "Sol Gorsel" }, { value: "right-image", label: "Sag Gorsel" }]} /></div>);
+      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Aciklama" prop="description" multiline /><ImageField label="Gorsel" prop="image" /><LayoutSelect prop="layout" options={[{ value: "left-image", label: "Sol Gorsel" }, { value: "right-image", label: "Sag Gorsel" }]} />{responsiveHint}</div>);
     case "rooms":
-      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Alt Baslik" prop="subtitle" />{(props.rooms || []).map((room, i) => (<div key={i} className="p-3 bg-muted/30 rounded-lg space-y-2"><p className="text-xs font-medium text-muted-foreground">Oda {i + 1}</p><Input value={room.name || ""} onChange={(e) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], name: e.target.value }; onUpdate("rooms", rooms); }} placeholder="Oda Adi" className="h-8 text-sm" /><Textarea value={room.description || ""} onChange={(e) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], description: e.target.value }; onUpdate("rooms", rooms); }} placeholder="Aciklama" className="text-sm min-h-[50px]" /><ImageUpload value={room.image || ""} onChange={(v) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], image: v }; onUpdate("rooms", rooms); }} label="Gorsel" /><Input value={room.price || ""} onChange={(e) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], price: e.target.value }; onUpdate("rooms", rooms); }} placeholder="Fiyat" className="h-8 text-sm" /></div>))}</div>);
+      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Alt Baslik" prop="subtitle" />{(props.rooms || []).map((room, i) => (<div key={i} className="p-3 bg-muted/30 rounded-lg space-y-2"><p className="text-xs font-medium text-muted-foreground">Oda {i + 1}</p><Input value={room.name || ""} onChange={(e) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], name: e.target.value }; onUpdate("rooms", rooms); }} placeholder="Oda Adi" className="h-8 text-sm" /><Textarea value={room.description || ""} onChange={(e) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], description: e.target.value }; onUpdate("rooms", rooms); }} placeholder="Aciklama" className="text-sm min-h-[50px]" /><ImageUpload value={room.image || ""} onChange={(v) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], image: v }; onUpdate("rooms", rooms); }} label="Gorsel" /><Input value={room.price || ""} onChange={(e) => { const rooms = [...(props.rooms || [])]; rooms[i] = { ...rooms[i], price: e.target.value }; onUpdate("rooms", rooms); }} placeholder="Fiyat" className="h-8 text-sm" /></div>))}{responsiveHint}</div>);
     case "gallery":
-      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><LayoutSelect prop="layout" options={[{ value: "grid", label: "Grid" }, { value: "masonry", label: "Masonry" }]} />{(props.images || []).map((img, i) => (<ImageUpload key={i} value={img.url || ""} onChange={(v) => { const images = [...(props.images || [])]; images[i] = { ...images[i], url: v }; onUpdate("images", images); }} label={`Gorsel ${i + 1}`} testId={`editor-gallery-${i}-url`} />))}</div>);
+      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><LayoutSelect prop="layout" options={[{ value: "grid", label: "Grid" }, { value: "masonry", label: "Masonry" }]} />{(props.images || []).map((img, i) => (<ImageUpload key={i} value={img.url || ""} onChange={(v) => { const images = [...(props.images || [])]; images[i] = { ...images[i], url: v }; onUpdate("images", images); }} label={`Gorsel ${i + 1}`} testId={`editor-gallery-${i}-url`} />))}{responsiveHint}</div>);
     case "services":
       return (<div className="space-y-3"><Field label="Baslik" prop="title" />{(props.services || []).map((svc, i) => (<div key={i} className="p-3 bg-muted/30 rounded-lg space-y-2"><Input value={svc.name || ""} onChange={(e) => { const services = [...(props.services || [])]; services[i] = { ...services[i], name: e.target.value }; onUpdate("services", services); }} placeholder="Hizmet Adi" className="h-8 text-sm" /><Textarea value={svc.description || ""} onChange={(e) => { const services = [...(props.services || [])]; services[i] = { ...services[i], description: e.target.value }; onUpdate("services", services); }} placeholder="Aciklama" className="text-sm min-h-[50px]" /></div>))}</div>);
     case "testimonials":
       return (<div className="space-y-3"><Field label="Baslik" prop="title" />{(props.testimonials || []).map((t, i) => (<div key={i} className="p-3 bg-muted/30 rounded-lg space-y-2"><Input value={t.name || ""} onChange={(e) => { const testimonials = [...(props.testimonials || [])]; testimonials[i] = { ...testimonials[i], name: e.target.value }; onUpdate("testimonials", testimonials); }} placeholder="Isim" className="h-8 text-sm" /><Textarea value={t.text || ""} onChange={(e) => { const testimonials = [...(props.testimonials || [])]; testimonials[i] = { ...testimonials[i], text: e.target.value }; onUpdate("testimonials", testimonials); }} placeholder="Yorum" className="text-sm min-h-[60px]" /></div>))}</div>);
     case "contact":
-      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Adres" prop="address" /><Field label="Telefon" prop="phone" /><Field label="E-posta" prop="email" /><LayoutSelect prop="layout" options={[{ value: "split", label: "Ikiye Bolunmus" }, { value: "centered", label: "Ortalanmis" }]} /></div>);
+      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Adres" prop="address" /><Field label="Telefon" prop="phone" /><Field label="E-posta" prop="email" /><LayoutSelect prop="layout" options={[{ value: "split", label: "Ikiye Bolunmus" }, { value: "centered", label: "Ortalanmis" }]} />{responsiveHint}</div>);
     case "banner":
       return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Alt Baslik" prop="subtitle" /><ImageField label="Arka Plan Gorseli" prop="backgroundImage" /><Field label="Buton Metni" prop="ctaText" /><Field label="Buton Linki" prop="ctaLink" /></div>);
+    case "booking":
+      return (
+        <div className="space-y-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <p className="text-[10px] text-primary font-medium">Rezervasyon Widget</p>
+            <p className="text-[10px] text-muted-foreground">Harici bir booking engine embed kodu veya yerlesik formu kullanabilirsiniz.</p>
+          </div>
+          <Field label="Baslik" prop="title" placeholder="Rezervasyon" />
+          <Field label="Alt Baslik" prop="subtitle" placeholder="Tatilinizi simdi planlayin" />
+          <Field label="Telefon" prop="phone" placeholder="+90 555 123 4567" />
+          <Field label="E-posta" prop="email" placeholder="info@otel.com" />
+          <Field label="Booking URL (Form action)" prop="bookingUrl" placeholder="https://booking.com/hotel/..." />
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Oda Tipleri (virgul ile ayirin)</label>
+            <Input
+              value={(props.roomTypes || []).join(", ")}
+              onChange={(e) => onUpdate("roomTypes", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
+              className="h-8 text-sm"
+              placeholder="Standart, Deluxe, Suite"
+              data-testid="editor-field-booking-roomTypes"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Harici Widget Kodu (Opsiyonel)</label>
+            <Textarea
+              value={props.widgetCode || ""}
+              onChange={(e) => onUpdate("widgetCode", e.target.value)}
+              className="text-sm min-h-[80px] font-mono"
+              data-testid="editor-field-booking-widgetCode"
+              placeholder="<script>...</script> veya <iframe>...</iframe>"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">Booking.com, HotelRunner vb. embed kodu yapistirin. Bos birakirsaniz yerlesik form kullanilir.</p>
+          </div>
+        </div>
+      );
     case "footer":
       return (<div className="space-y-3"><Field label="Otel Adi" prop="hotelName" /><Field label="Adres" prop="address" /><Field label="Telefon" prop="phone" /><Field label="E-posta" prop="email" /><p className="text-[10px] text-muted-foreground italic">* "Powered by Syroce" ibaresi her zaman gorunur.</p></div>);
     default:
