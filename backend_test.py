@@ -329,6 +329,20 @@ class CRMTester:
         
         return response
     
+    def test_pause_campaign(self):
+        """Test pausing campaign"""
+        if "campaign_id" not in self.test_data:
+            raise Exception("No campaign ID available - create campaign test must run first")
+        
+        campaign_id = self.test_data["campaign_id"]
+        
+        response = self.make_request("POST", f"/campaigns/{campaign_id}/pause")
+        
+        if response.get("status") != "paused":
+            raise Exception("Campaign pause failed - status not paused")
+        
+        return response
+    
     # ==================== REPORTS TESTS ====================
     
     def test_reports_overview(self):
