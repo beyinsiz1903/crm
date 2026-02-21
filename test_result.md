@@ -231,11 +231,14 @@ backend:
     file: "backend/team_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET /api/team, POST /api/team/invite, PUT /api/team/{id}/role, DELETE /api/team/{id}. Role-based access control. First user auto-admin."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Team management endpoints tested successfully. Verified: GET /api/team returns list of team members with role information, POST /api/team/invite creates new team member with role assignment and temporary password (requires admin role - RBAC working correctly). Role-based access control implemented and functioning as designed."
 
   - task: "Enhanced activity log + segments endpoints"
     implemented: true
