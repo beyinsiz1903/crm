@@ -538,6 +538,81 @@ export default function TemplateEditor() {
     window.open(`${backendUrl}/api/hosted/${projectId}`, "_blank");
   };
 
+  // ==================== BLOCK LIBRARY ====================
+  const loadPresets = async () => {
+    try {
+      const data = await getSectionPresets();
+      setPresets(data);
+    } catch (err) {
+      console.error("Failed to load presets:", err);
+    }
+  };
+
+  const handleOpenBlockLibrary = async () => {
+    await loadPresets();
+    setShowBlockLibrary(true);
+  };
+
+  const handleSaveAsPreset = (sectionId) => {
+    const section = project.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    setPresetSectionId(sectionId);
+    setPresetName(SECTION_LABELS[section.type] || section.title || "Blok");
+    setPresetCategory("genel");
+    setShowSavePreset(true);
+  };
+
+  const handleConfirmSavePreset = async () => {
+    if (!presetName.trim() || !presetSectionId) return;
+    const section = project.sections.find((s) => s.id === presetSectionId);
+    if (!section) return;
+    try {
+      await createSectionPreset({
+        name: presetName,
+        category: presetCategory,
+        section_type: section.type,
+        props: section.props,
+      });
+      setShowSavePreset(false);
+      setPresetSectionId(null);
+      setPresetName("");
+    } catch (err) {
+      console.error("Failed to save preset:", err);
+    }
+  };
+
+  const handleAddPresetToProject = (preset) => {
+    setProject((prev) => {
+      pushUndoState(prev);
+      const newSection = {
+        id: crypto.randomUUID(),
+        type: preset.section_type,
+        title: preset.name,
+        visible: true,
+        props: JSON.parse(JSON.stringify(preset.props)),
+      };
+      const footerIdx = prev.sections.findIndex((s) => s.type === "footer");
+      const sections = footerIdx >= 0
+        ? [...prev.sections.slice(0, footerIdx), newSection, ...prev.sections.slice(footerIdx)]
+        : [...prev.sections, newSection];
+      const updated = { ...prev, sections };
+      updatePreview(updated.sections, updated.theme, updated.language);
+      autoSave(updated);
+      setActiveSection(newSection.id);
+      return updated;
+    });
+    setShowBlockLibrary(false);
+  };
+
+  const handleDeletePreset = async (presetId) => {
+    try {
+      await deleteSectionPreset(presetId);
+      setPresets((prev) => prev.filter((p) => p.id !== presetId));
+    } catch (err) {
+      console.error("Failed to delete preset:", err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
