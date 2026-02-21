@@ -549,9 +549,9 @@ class CRMTester:
             
             return response
         except Exception as e:
-            if "admin" in str(e).lower():
+            if "yetkiniz yok" in str(e) or "admin" in str(e).lower():
                 # This is expected if user is not admin
-                self.log("Domain creation requires admin role", "Create Domain", "INFO")
+                self.log("Domain creation requires admin role - this is expected behavior", "Create Domain", "INFO")
                 return {"status": "requires_admin", "message": "Domain creation requires admin role"}
             else:
                 raise e
