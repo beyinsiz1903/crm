@@ -11,7 +11,7 @@ import asyncio
 from typing import Dict, Any, Optional
 
 # Use the frontend environment variable for backend URL
-BACKEND_URL = "https://static-web-builder.preview.emergentagent.com/api"
+BACKEND_URL = "https://crm-lead-scoring.preview.emergentagent.com/api"
 
 class SectionPresetsBackendTester:
     def __init__(self, base_url: str):
