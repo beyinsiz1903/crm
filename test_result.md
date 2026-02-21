@@ -141,11 +141,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET /api/communications, POST /api/communications, DELETE /api/communications/{id}. Auto-increases lead score by 5 per communication."
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Communications endpoints tested successfully. Verified: POST /api/communications creates communication record (entity_type: lead, comm_type: email, subject, content, direction), GET /api/communications lists all communications, GET with entity_type and entity_id filters works correctly. Communication creation properly linked to lead."
 
   - task: "Campaign CRUD + activate/pause (MOCK)"
     implemented: true
