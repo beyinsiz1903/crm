@@ -444,11 +444,11 @@ def render_booking(props, theme, lang="tr"):
 
     contact_info = ""
     if phone or email:
-        contact_info = f'<div style="text-align:center;margin-top:25px;padding-top:20px;border-top:1px solid #eee;color:#666;font-size:0.95rem">'
+        contact_info = '<div style="text-align:center;margin-top:25px;padding-top:20px;border-top:1px solid #eee;color:#666;font-size:0.95rem">'
         if phone:
             contact_info += f'<span>{t["phone"]}: <strong>{phone}</strong></span>'
         if phone and email:
-            contact_info += f' &nbsp;|&nbsp; '
+            contact_info += ' &nbsp;|&nbsp; '
         if email:
             contact_info += f'<span>Email: <strong>{email}</strong></span>'
         contact_info += '</div>'
@@ -736,17 +736,17 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
     home_html = _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code)
 
     # Rooms page
-    rooms_body = f'<div style="padding-top:80px"></div>'
+    rooms_body = '<div style="padding-top:80px"></div>'
     rooms_body += render_rooms(rooms_props, theme, lang)
     rooms_html = _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, rooms_body, footer_html, analytics_code)
 
     # Gallery page
-    gallery_body = f'<div style="padding-top:80px"></div>'
+    gallery_body = '<div style="padding-top:80px"></div>'
     gallery_body += render_gallery(gallery_props, theme, lang)
     gallery_html = _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, gallery_body, footer_html, analytics_code)
 
     # Contact page
-    contact_body = f'<div style="padding-top:80px"></div>'
+    contact_body = '<div style="padding-top:80px"></div>'
     contact_body += render_contact(contact_props, theme, lang)
     contact_html = _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, contact_body, footer_html, analytics_code)
 
@@ -849,9 +849,9 @@ async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) 
 
     pages = {
         "index.html": _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code),
-        "rooms.html": _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, f'<div style="padding-top:80px"></div>' + render_rooms(rooms_props, theme, lang), footer_html, analytics_code),
-        "gallery.html": _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, f'<div style="padding-top:80px"></div>' + render_gallery(gallery_props, theme, lang), footer_html, analytics_code),
-        "contact.html": _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, f'<div style="padding-top:80px"></div>' + render_contact(contact_props, theme, lang), footer_html, analytics_code),
+        "rooms.html": _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, '<div style="padding-top:80px"></div>' + render_rooms(rooms_props, theme, lang), footer_html, analytics_code),
+        "gallery.html": _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, '<div style="padding-top:80px"></div>' + render_gallery(gallery_props, theme, lang), footer_html, analytics_code),
+        "contact.html": _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, '<div style="padding-top:80px"></div>' + render_contact(contact_props, theme, lang), footer_html, analytics_code),
     }
 
     # Bundle assets for all pages
