@@ -113,16 +113,21 @@ async def register(data: RegisterRequest):
     existing = await db.users.find_one({"email": data.email})
     if existing:
         raise HTTPException(400, "Bu e-posta zaten kayitli")
+    # First user is admin, others are editor by default
+    user_count = await db.users.count_documents({})
+    role = "admin" if user_count == 0 else "editor"
     user = {
         "id": str(uuid.uuid4()),
         "email": data.email,
         "name": data.name,
         "password_hash": get_password_hash(data.password),
+        "role": role,
+        "status": "active",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(user)
-    token = create_access_token({"user_id": user["id"], "email": user["email"]})
-    return {"token": token, "user": {"id": user["id"], "email": user["email"], "name": user["name"]}}
+    token = create_access_token({"user_id": user["id"], "email": user["email"], "role": role})
+    return {"token": token, "user": {"id": user["id"], "email": user["email"], "name": user["name"], "role": role}}
 
 @api_router.post("/auth/login")
 async def login(data: LoginRequest):
