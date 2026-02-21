@@ -231,6 +231,17 @@ export default function TemplateEditor() {
     return () => window.removeEventListener("keydown", handler);
   }, [handleUndo, handleRedo]);
 
+  // Listen for save-as-preset events from section items
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && e.detail.sectionId) {
+        handleSaveAsPreset(e.detail.sectionId);
+      }
+    };
+    window.addEventListener("saveAsPreset", handler);
+    return () => window.removeEventListener("saveAsPreset", handler);
+  });
+
   const autoSave = useCallback((updatedProject) => {
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(async () => {
