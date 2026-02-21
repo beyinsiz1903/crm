@@ -13,7 +13,8 @@ import {
   ArrowLeft, Save, Download, Monitor, Tablet, Smartphone, Eye,
   EyeOff, Plus, Trash2, Check,
   Globe, History, Copy, Search as SearchIcon, Settings2, Send,
-  CalendarDays, BarChart3, ExternalLink, Package, GripVertical
+  CalendarDays, BarChart3, ExternalLink, Package, GripVertical,
+  Undo2, Redo2, Library, Bookmark
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
