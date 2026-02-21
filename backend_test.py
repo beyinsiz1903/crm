@@ -47,20 +47,20 @@ class CRMTester:
     def test(self, test_name):
         """Decorator for test methods"""
         def decorator(func):
-            def wrapper(*args, **kwargs):
-                self.total_tests += 1
-                self.log(f"Starting test...", test_name, "TEST")
+            def wrapper(self_inner, *args, **kwargs):
+                self_inner.total_tests += 1
+                self_inner.log(f"Starting test...", test_name, "TEST")
                 try:
-                    result = func(*args, **kwargs)
-                    self.passed_tests += 1
-                    self.log(f"✅ PASSED", test_name, "PASS")
-                    self.results.append({"test": test_name, "status": "PASSED", "details": "Success"})
+                    result = func(self_inner, *args, **kwargs)
+                    self_inner.passed_tests += 1
+                    self_inner.log(f"✅ PASSED", test_name, "PASS")
+                    self_inner.results.append({"test": test_name, "status": "PASSED", "details": "Success"})
                     return result
                 except Exception as e:
-                    self.failed_tests += 1
+                    self_inner.failed_tests += 1
                     error_msg = str(e)
-                    self.log(f"❌ FAILED - {error_msg}", test_name, "FAIL")
-                    self.results.append({"test": test_name, "status": "FAILED", "details": error_msg})
+                    self_inner.log(f"❌ FAILED - {error_msg}", test_name, "FAIL")
+                    self_inner.results.append({"test": test_name, "status": "FAILED", "details": error_msg})
                     return None
             return wrapper
         return decorator
