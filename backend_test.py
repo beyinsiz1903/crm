@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Syroce CRM Backend API Test Suite
-Tests all new backend endpoints for the hotel website builder.
+Tests section-presets (Block Library) endpoints for the hotel website builder.
 """
 
 import sys
