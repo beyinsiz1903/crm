@@ -15,6 +15,8 @@ import FormBuilder from "@/pages/FormBuilder";
 import Blog from "@/pages/Blog";
 import Team from "@/pages/Team";
 import Login from "@/pages/Login";
+import Profile from "@/pages/Profile";
+import Notifications from "@/pages/Notifications";
 import { checkAuth, getMe } from "@/lib/api";
 
 function AuthWrapper({ children }) {
