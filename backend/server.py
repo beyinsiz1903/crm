@@ -108,6 +108,19 @@ async def log_activity(activity_type: str, message: str, entity_id: str = "", en
     }
     await db.activity_log.insert_one(activity)
 
+async def create_notification(user_id: str, title: str, message: str, notif_type: str = "info", link: str = ""):
+    notif = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "title": title,
+        "message": message,
+        "type": notif_type,
+        "link": link,
+        "read": False,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notif)
+
 # ==================== AUTH ====================
 
 @api_router.post("/auth/register")
