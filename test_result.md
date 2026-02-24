@@ -207,11 +207,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET /api/leads/export/csv and GET /api/clients/export/csv endpoints return CSV files"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - CSV export for leads working correctly. GET /api/leads/export/csv returns proper CSV file with correct content-type (text/csv), proper headers (Ad, Email, Telefon, Sirket, Kaynak, Asama, Skor, Etiketler, Notlar, Olusturma Tarihi), and 1 data row with lead information. CSV formatting and data export functionality working as expected."
 
   - task: "Bulk operations (stage change, delete)"
     implemented: true
