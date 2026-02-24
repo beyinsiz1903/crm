@@ -199,3 +199,58 @@
 .App {
   text-align: left;
 }
+
+/* Light Theme */
+[data-theme="light"] {
+  --background: 0 0% 100%;
+  --foreground: 224 71.4% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 224 71.4% 4.1%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 224 71.4% 4.1%;
+  --primary: 174 70% 40%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 14.3% 95.9%;
+  --secondary-foreground: 220.9 39.3% 11%;
+  --muted: 220 14.3% 95.9%;
+  --muted-foreground: 220 8.9% 46.1%;
+  --accent: 220 14.3% 95.9%;
+  --accent-foreground: 220.9 39.3% 11%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 20% 98%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 174 70% 40%;
+}
+
+[data-theme="light"] ::-webkit-scrollbar-track {
+  background: hsl(0 0% 95%);
+}
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: hsl(220 10% 75%);
+}
+[data-theme="light"] .section-item:hover {
+  background: hsl(220 14% 95%);
+}
+[data-theme="light"] .editor-right {
+  background: hsl(220 14% 96%);
+}
+[data-theme="light"] .card-hover:hover {
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
+[data-theme="light"] .status-draft {
+  background: hsl(220 14% 95%);
+  color: hsl(220 14% 20%);
+  border: 1px solid hsl(220 10% 85%);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .app-main {
+    margin-left: 0;
+  }
+  .page-content {
+    padding: 16px;
+  }
+}
+
