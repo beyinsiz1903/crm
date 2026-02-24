@@ -263,6 +263,9 @@ export default function Leads() {
                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Henuz lead yok</TableCell></TableRow>
               ) : leads.map((lead) => (
                 <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(lead)}>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox checked={selectedIds.includes(lead.id)} onCheckedChange={() => toggleSelect(lead.id)} />
+                  </TableCell>
                   <TableCell>
                     <div className="font-medium">{lead.name}</div>
                     <div className="text-xs text-muted-foreground">{lead.email}</div>
@@ -275,6 +278,11 @@ export default function Leads() {
                   <TableCell className="text-xs text-muted-foreground">{formatDate(lead.created_at)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      {lead.stage !== "won" && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-green-400" onClick={() => handleConvert(lead)} title="Musteriye Donustur">
+                          <UserCheck size={14} />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(lead)}><Edit size={14} /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(lead.id)}><Trash2 size={14} /></Button>
                     </div>
@@ -285,6 +293,32 @@ export default function Leads() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <span className="text-sm text-muted-foreground">
+            Toplam {totalCount} lead, Sayfa {page}/{totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              <ChevronLeft size={14} /> Onceki
+            </Button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              const pageNum = Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
+              if (pageNum > totalPages) return null;
+              return (
+                <Button key={pageNum} variant={pageNum === page ? "default" : "outline"} size="sm" className="w-8 h-8 p-0" onClick={() => setPage(pageNum)}>
+                  {pageNum}
+                </Button>
+              );
+            })}
+            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              Sonraki <ChevronRight size={14} />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
