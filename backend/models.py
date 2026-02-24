@@ -140,6 +140,7 @@ class FormCreate(BaseModel):
     name: str
     fields: List[Dict[str, Any]] = []
     form_type: str = "contact"
+    auto_create_lead: bool = False
 
 
 class FormUpdate(BaseModel):
@@ -147,6 +148,7 @@ class FormUpdate(BaseModel):
     fields: Optional[List[Dict[str, Any]]] = None
     form_type: Optional[str] = None
     status: Optional[str] = None
+    auto_create_lead: Optional[bool] = None
 
 
 # ============ BLOG ============
