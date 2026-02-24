@@ -99,14 +99,49 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
         if form.get("status") != "active":
             raise HTTPException(400, "Bu form aktif degil")
         now = datetime.now(timezone.utc).isoformat()
+        fields_data = data.get("fields", data)
         submission = {
             "id": str(uuid.uuid4()),
             "form_id": form_id,
-            "data": data.get("fields", data),
+            "data": fields_data,
             "created_at": now,
         }
         await db.form_submissions.insert_one(submission)
         await db.forms.update_one({"id": form_id}, {"$inc": {"submissions_count": 1}})
+
+        # Auto-create lead from form submission if enabled
+        if form.get("auto_create_lead", False):
+            lead_name = fields_data.get("name", fields_data.get("ad", fields_data.get("isim", "")))
+            lead_email = fields_data.get("email", fields_data.get("eposta", ""))
+            lead_phone = fields_data.get("phone", fields_data.get("telefon", ""))
+            lead_company = fields_data.get("company", fields_data.get("sirket", fields_data.get("otel", "")))
+            if lead_name or lead_email:
+                auto_score = 0
+                if lead_email:
+                    auto_score += 10
+                if lead_phone:
+                    auto_score += 10
+                if lead_company:
+                    auto_score += 10
+                lead = {
+                    "id": str(uuid.uuid4()),
+                    "name": lead_name or lead_email,
+                    "email": lead_email,
+                    "phone": lead_phone,
+                    "company": lead_company,
+                    "source": "website",
+                    "score": auto_score,
+                    "stage": "new",
+                    "assigned_to": "",
+                    "tags": ["form-submission"],
+                    "notes": f"Form: {form.get('name', '')} | ID: {submission['id']}",
+                    "created_by": "system",
+                    "created_at": now,
+                    "updated_at": now,
+                }
+                await db.leads.insert_one(lead)
+                await log_activity_fn("lead_from_form", f"'{lead['name']}' form gonderiminden otomatik olusturuldu", lead["id"], "lead", "system")
+
         return {"message": "Form basariyla gonderildi", "id": submission["id"]}
 
     # ==================== BLOG ====================
