@@ -92,6 +92,8 @@ function App() {
                     <Route path="/forms" element={<FormBuilder />} />
                     <Route path="/blog" element={<Blog />} />
                     <Route path="/team" element={<Team />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/notifications" element={<Notifications />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </main>
