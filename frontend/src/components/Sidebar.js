@@ -124,7 +124,7 @@ export default function Sidebar() {
                   key={item.path}
                   whileHover={{ x: 2 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => { navigate(item.path); setMobileOpen(false); }}
                   data-testid={`sidebar-nav-${item.path.replace("/", "") || "dashboard"}`}
                   className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
                     isActive
