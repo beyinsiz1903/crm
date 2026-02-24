@@ -17,8 +17,10 @@ import jwt as pyjwt
 
 from models import (
     TemplateCreate, ProjectCreate, ProjectUpdate,
-    ClientCreate, ClientUpdate, LoginRequest, RegisterRequest
+    ClientCreate, ClientUpdate, LoginRequest, RegisterRequest,
+    ProfileUpdate, PasswordChange
 )
+import re as regex_module
 from templates_data import generate_all_templates
 from export_service import (
     generate_full_html, create_export_zip, create_multipage_export_zip,
