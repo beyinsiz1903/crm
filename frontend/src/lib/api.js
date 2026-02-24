@@ -20,6 +20,8 @@ export const checkAuth = () => api.get("/auth/check").then((r) => r.data);
 export const login = (data) => api.post("/auth/login", data).then((r) => r.data);
 export const register = (data) => api.post("/auth/register", data).then((r) => r.data);
 export const getMe = () => api.get("/auth/me").then((r) => r.data);
+export const updateProfile = (data) => api.put("/auth/profile", data).then((r) => r.data);
+export const changePassword = (data) => api.put("/auth/change-password", data).then((r) => r.data);
 
 // Templates
 export const getTemplates = (category) =>
