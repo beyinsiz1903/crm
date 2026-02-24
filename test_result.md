@@ -195,11 +195,14 @@ backend:
     file: "backend/content_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "Form model has auto_create_lead field. When form submitted and auto_create_lead=true, a lead is auto-created from submission data"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Form to Lead auto-creation working flawlessly. Successfully created Contact Form with auto_create_lead=true (Form ID: 58a7145e-91e2-437b-8ba2-b57a1e6db4e5). Public form submission (no auth required) with name='Form Lead' and email='formlead@test.com' automatically created a lead with correct attributes: source='website', tags=['form-submission']. Complete form-to-lead workflow functioning perfectly."
 
   - task: "CSV export for leads and clients"
     implemented: true
