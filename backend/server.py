@@ -152,6 +152,84 @@ async def check_auth():
     count = await db.users.count_documents({})
     return {"has_users": count > 0}
 
+# ==================== PROFILE ====================
+
+@api_router.put("/auth/profile")
+async def update_profile(data: ProfileUpdate, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Oturum gecersiz")
+    update_data = {}
+    if data.name is not None:
+        update_data["name"] = data.name
+    if data.email is not None:
+        if data.email != user["email"]:
+            existing = await db.users.find_one({"email": data.email})
+            if existing:
+                raise HTTPException(400, "Bu e-posta zaten kayitli")
+        update_data["email"] = data.email
+    if not update_data:
+        raise HTTPException(400, "Guncellenecek alan belirtilmedi")
+    await db.users.update_one({"id": user["id"]}, {"$set": update_data})
+    updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
+    await log_activity("profile_updated", f"Profil guncellendi", user["id"], "user", user["id"])
+    return serialize_doc(updated)
+
+@api_router.put("/auth/change-password")
+async def change_password(data: PasswordChange, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Oturum gecersiz")
+    if not verify_password(data.current_password, user["password_hash"]):
+        raise HTTPException(400, "Mevcut sifre hatali")
+    # Password validation
+    if len(data.new_password) < 6:
+        raise HTTPException(400, "Yeni sifre en az 6 karakter olmali")
+    new_hash = get_password_hash(data.new_password)
+    await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": new_hash}})
+    await log_activity("password_changed", "Sifre degistirildi", user["id"], "user", user["id"])
+    return {"message": "Sifre basariyla degistirildi"}
+
+# ==================== NOTIFICATIONS ====================
+
+@api_router.get("/notifications")
+async def list_notifications(authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Oturum gecersiz")
+    notifs = await db.notifications.find(
+        {"user_id": user["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return serialize_list(notifs)
+
+@api_router.get("/notifications/unread-count")
+async def unread_notification_count(authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Oturum gecersiz")
+    count = await db.notifications.count_documents({"user_id": user["id"], "read": False})
+    return {"count": count}
+
+@api_router.put("/notifications/{notif_id}/read")
+async def mark_notification_read(notif_id: str, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Oturum gecersiz")
+    await db.notifications.update_one(
+        {"id": notif_id, "user_id": user["id"]}, {"$set": {"read": True}}
+    )
+    return {"message": "Okundu olarak isaretlendi"}
+
+@api_router.put("/notifications/read-all")
+async def mark_all_notifications_read(authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    if not user:
+        raise HTTPException(401, "Oturum gecersiz")
+    await db.notifications.update_many(
+        {"user_id": user["id"], "read": False}, {"$set": {"read": True}}
+    )
+    return {"message": "Tum bildirimler okundu olarak isaretlendi"}
+
 # ==================== UPLOAD ====================
 
 @api_router.post("/upload")
