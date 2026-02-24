@@ -35,6 +35,8 @@ def create_crm_router(db, get_current_user, log_activity_fn, serialize_doc, seri
         tag: Optional[str] = None,
         sort_by: str = "updated_at",
         sort_dir: int = -1,
+        page: int = 1,
+        limit: int = 50,
         authorization: Optional[str] = Header(None)
     ):
         await require_auth(authorization)
@@ -53,8 +55,16 @@ def create_crm_router(db, get_current_user, log_activity_fn, serialize_doc, seri
                 {"email": {"$regex": search, "$options": "i"}},
                 {"company": {"$regex": search, "$options": "i"}},
             ]
-        leads = await db.leads.find(query, {"_id": 0}).sort(sort_by, sort_dir).to_list(500)
-        return serialize_list(leads)
+        total = await db.leads.count_documents(query)
+        skip = (max(1, page) - 1) * limit
+        leads = await db.leads.find(query, {"_id": 0}).sort(sort_by, sort_dir).skip(skip).limit(limit).to_list(limit)
+        return {
+            "items": serialize_list(leads),
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "pages": max(1, (total + limit - 1) // limit)
+        }
 
     @router.get("/leads/{lead_id}")
     async def get_lead(lead_id: str, authorization: Optional[str] = Header(None)):
