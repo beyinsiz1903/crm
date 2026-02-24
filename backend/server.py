@@ -657,6 +657,34 @@ async def get_dashboard_stats():
     draft_count = await db.projects.count_documents({"status": "draft"})
     published_count = await db.projects.count_documents({"status": "published"})
     delivered_count = await db.projects.count_documents({"status": "delivered"})
+
+    # CRM Metrics
+    total_leads = await db.leads.count_documents({})
+    new_leads = await db.leads.count_documents({"stage": "new"})
+    won_leads = await db.leads.count_documents({"stage": "won"})
+    lost_leads = await db.leads.count_documents({"stage": "lost"})
+    active_campaigns = await db.campaigns.count_documents({"status": "active"})
+    total_comms = await db.communications.count_documents({})
+    conversion_rate = round((won_leads / total_leads * 100), 1) if total_leads > 0 else 0
+
+    # Average lead score
+    pipeline_agg = [{"$group": {"_id": None, "avg_score": {"$avg": "$score"}}}]
+    avg_result = await db.leads.aggregate(pipeline_agg).to_list(1)
+    avg_score = round(avg_result[0]["avg_score"], 1) if avg_result else 0
+
+    # Pipeline summary (top 4 stages with counts)
+    stage_keys = ["new", "contacted", "qualified", "proposal", "negotiation", "won", "lost"]
+    stage_labels = {"new": "Yeni", "contacted": "Iletisim", "qualified": "Nitelikli", "proposal": "Teklif", "negotiation": "Muzakere", "won": "Kazanildi", "lost": "Kaybedildi"}
+    pipeline_summary = []
+    for sk in stage_keys:
+        count = await db.leads.count_documents({"stage": sk})
+        if count > 0:
+            pipeline_summary.append({"stage": sk, "label": stage_labels.get(sk, sk), "count": count})
+
+    # Recent activity count (last 7 days)
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    recent_activities = await db.activity_log.count_documents({"created_at": {"$gte": week_ago}})
+
     return {
         "total_clients": total_clients,
         "total_projects": total_projects,
@@ -665,7 +693,18 @@ async def get_dashboard_stats():
             "draft": draft_count,
             "published": published_count,
             "delivered": delivered_count
-        }
+        },
+        # CRM metrics
+        "total_leads": total_leads,
+        "new_leads": new_leads,
+        "won_leads": won_leads,
+        "lost_leads": lost_leads,
+        "conversion_rate": conversion_rate,
+        "avg_lead_score": avg_score,
+        "active_campaigns": active_campaigns,
+        "total_communications": total_comms,
+        "pipeline_summary": pipeline_summary,
+        "recent_activities": recent_activities,
     }
 
 @api_router.get("/dashboard/activity")
