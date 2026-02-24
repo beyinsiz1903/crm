@@ -153,11 +153,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "POST /api/leads/{id}/convert - creates client from lead data, marks lead as won"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Lead to client conversion working flawlessly. Successfully created test lead (Test Lead from Test Hotel with referral source) and converted it to client. Conversion endpoint POST /api/leads/{id}/convert created client ID: 9337c557-aa3f-481c-b766-806aa1dc4bba, properly transferred lead data to client record, and marked lead as won. Full conversion workflow working correctly."
 
   - task: "Pagination on leads list"
     implemented: true
