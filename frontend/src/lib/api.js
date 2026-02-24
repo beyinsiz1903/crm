@@ -86,6 +86,11 @@ export const deleteLead = (id) => api.delete(`/leads/${id}`).then((r) => r.data)
 export const updateLeadStage = (id, stage) => api.put(`/leads/${id}/stage`, { stage }).then((r) => r.data);
 export const updateLeadScore = (id, score) => api.put(`/leads/${id}/score`, { score }).then((r) => r.data);
 export const assignLead = (id, assigned_to) => api.put(`/leads/${id}/assign`, { assigned_to }).then((r) => r.data);
+export const convertLead = (id) => api.post(`/leads/${id}/convert`).then((r) => r.data);
+export const exportLeadsCsv = () => api.get("/leads/export/csv", { responseType: "blob" }).then((r) => r.data);
+export const exportClientsCsv = () => api.get("/clients/export/csv", { responseType: "blob" }).then((r) => r.data);
+export const bulkUpdateStage = (lead_ids, stage) => api.post("/leads/bulk/stage", { lead_ids, stage }).then((r) => r.data);
+export const bulkDeleteLeads = (lead_ids) => api.post("/leads/bulk/delete", { lead_ids }).then((r) => r.data);
 
 // Pipeline
 export const getPipelineStages = () => api.get("/pipeline/stages").then((r) => r.data);
