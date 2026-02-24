@@ -436,21 +436,27 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "3.0"
-  test_sequence: 6
-  run_ui: true
+  version: "3.1"
+  test_sequence: 7
+  run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Profile endpoints"
+    - "Dashboard CRM metrics"
+    - "Lead to Client conversion"
+    - "Pagination on leads list"
+    - "CSV export"
+    - "Bulk operations"
+    - "Notifications system"
+    - "Form to Lead auto-creation"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
     - agent: "main"
-    - message: "Frontend test istendi. Tum yeni sayfalar test edilmeli: Leads, Pipeline, Campaigns, Reports, FormBuilder, Blog, Team. Sidebar'da yeni bolumler kontrol edilmeli. Login icin kayit olun (ilk kullanici admin olur). Backend 30/30 test gecti. Frontend URL: http://localhost:3000"
-    - agent: "testing"
-    - message: "✅ FRONTEND TESTING COMPLETE - All 9 frontend tasks tested successfully (100% pass rate). Comprehensive UI testing performed with Playwright automation. Verified: Authentication flow, all 4 sidebar sections with grouped navigation (CRM, Projeler, Pazarlama, Yonetim), Leads page with search/filters/stats/create functionality, Pipeline with 7 color-coded Kanban columns, Campaigns with MOCK warning banner, Reports with 8 KPI cards and multiple charts, Form Builder, Blog management, Team page with dual tabs and role management, Clients page with category filter and tags. Lead creation tested successfully ('Mehmet Yilmaz' created and visible across pages). No critical issues found - only minor React Dialog description warnings which don't affect functionality. All pages render correctly, navigation working properly, and all core features operational. Dashboard showing correct data with recent activities log. Ready for production use."
+    - message: "Faz 1 iyilestirmeleri yapildi. Backend'e eklenen yeni ozellikler: 1) Profil endpoint'leri (PUT /api/auth/profile, PUT /api/auth/change-password), 2) Dashboard CRM metrikleri (leads, pipeline, campaigns), 3) Lead-Client donusum (POST /api/leads/{id}/convert), 4) Pagination (/api/leads?page=1&limit=25), 5) MongoDB indexleri, 6) Form-Lead otomatik olusturma (auto_create_lead), 7) CSV export (/api/leads/export/csv, /api/clients/export/csv), 8) Bulk operations (bulk stage, bulk delete), 9) Notifications system. Frontend'e eklenen: Profil sayfasi, gelismis dashboard, lead donusum/CSV/pagination/bulk ops, sidebar'da bildirimler/profil/tema toggle, mobile responsive, light/dark tema. Test icin register olun ilk: POST /api/auth/register {email, password, name}. Sonra token ile diger endpointleri test edin."
 
   - task: "Undo/Redo functionality (Ctrl+Z / Ctrl+Y)"
     implemented: true
