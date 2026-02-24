@@ -123,18 +123,45 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-border">
+      <div className="px-3 py-3 border-t border-border space-y-1">
+        {/* Notifications */}
         <button
-          onClick={() => {
-            localStorage.removeItem("syroce_token");
-            window.location.reload();
-          }}
-          className="w-full text-[10px] text-muted-foreground font-mono text-center hover:text-foreground transition-colors cursor-pointer"
-          data-testid="sidebar-logout"
+          onClick={() => navigate("/notifications")}
+          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
+            location.pathname === "/notifications"
+              ? "bg-primary/10 text-primary border-l-2 border-primary"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
         >
-          Cikis Yap
+          <Bell size={16} />
+          <span>Bildirimler</span>
+          {unreadCount > 0 && (
+            <span className="ml-auto bg-red-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center font-bold">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
         </button>
-        <p className="text-[10px] text-muted-foreground font-mono text-center mt-1">
+        {/* Profile */}
+        <button
+          onClick={() => navigate("/profile")}
+          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-150 ${
+            location.pathname === "/profile"
+              ? "bg-primary/10 text-primary border-l-2 border-primary"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          }`}
+        >
+          <User size={16} />
+          <span>Profil</span>
+        </button>
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors duration-150"
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          <span>{theme === "dark" ? "Acik Tema" : "Koyu Tema"}</span>
+        </button>
+        <p className="text-[10px] text-muted-foreground font-mono text-center mt-2">
           Syroce CRM v3.0
         </p>
       </div>
