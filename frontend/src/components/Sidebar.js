@@ -62,12 +62,31 @@ export default function Sidebar() {
   };
 
   const toggleSection = (title) => setCollapsed((p) => ({ ...p, [title]: !p[title] }));
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <aside
-      data-testid="app-sidebar"
-      className="fixed left-0 top-0 bottom-0 bg-card border-r border-border flex flex-col z-40"
-      style={{ width: "var(--sidebar-w)" }}
+    <>
+      {/* Mobile hamburger */}
+      <button
+        className="md:hidden fixed top-3 left-3 z-50 p-2 rounded-lg bg-card border border-border"
+        onClick={() => setMobileOpen(!mobileOpen)}
+      >
+        <div className="w-5 h-0.5 bg-foreground mb-1" />
+        <div className="w-5 h-0.5 bg-foreground mb-1" />
+        <div className="w-5 h-0.5 bg-foreground" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 bg-black/50 z-40" onClick={() => setMobileOpen(false)} />
+      )}
+
+      <aside
+        data-testid="app-sidebar"
+        className={`fixed left-0 top-0 bottom-0 bg-card border-r border-border flex flex-col z-40 transition-transform duration-200 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        }`}
+        style={{ width: "var(--sidebar-w)" }}
     >
       {/* Logo */}
       <div className="px-6 py-5 border-b border-border">
