@@ -134,6 +134,55 @@ export default function Leads() {
 
   const formatDate = (d) => { if (!d) return ""; const dt = new Date(d); const diff = Math.floor((Date.now() - dt) / 60000); if (diff < 60) return `${diff} dk once`; if (diff < 1440) return `${Math.floor(diff / 60)} saat once`; return dt.toLocaleDateString("tr-TR"); };
 
+  const handleConvert = async (lead) => {
+    if (!window.confirm(`'${lead.name}' lead'ini musteriye donusturmek istediginize emin misiniz?`)) return;
+    try {
+      await convertLead(lead.id);
+      load();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Donusturme hatasi");
+    }
+  };
+
+  const handleExportCsv = async () => {
+    try {
+      const blob = await exportLeadsCsv();
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "leads_export.csv";
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) { console.error(err); }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === leads.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(leads.map((l) => l.id));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
+
+  const handleBulkStage = async (stage) => {
+    if (!selectedIds.length) return;
+    await bulkUpdateStage(selectedIds, stage);
+    setSelectedIds([]);
+    load();
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.length) return;
+    if (!window.confirm(`${selectedIds.length} lead silinecek. Emin misiniz?`)) return;
+    await bulkDeleteLeads(selectedIds);
+    setSelectedIds([]);
+    load();
+  };
+
   return (
     <div className="page-content">
       <PageHeader title="Lead Yonetimi" subtitle="Potansiyel musterilerinizi yonetin ve skorlayin" />
@@ -142,28 +191,48 @@ export default function Leads() {
       <div className="flex flex-wrap gap-3 mb-6">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
-          <Input placeholder="Lead ara..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Lead ara..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
         </div>
-        <Select value={stageFilter} onValueChange={setStageFilter}>
+        <Select value={stageFilter} onValueChange={(v) => { setStageFilter(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Asama" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tum Asamalar</SelectItem>
             {STAGES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={sourceFilter} onValueChange={setSourceFilter}>
+        <Select value={sourceFilter} onValueChange={(v) => { setSourceFilter(v); setPage(1); }}>
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Kaynak" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tum Kaynaklar</SelectItem>
             {SOURCES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button variant="outline" onClick={handleExportCsv} title="CSV Indir"><Download size={16} className="mr-1" /> CSV</Button>
         <Button onClick={openCreate}><Plus size={16} className="mr-1" /> Yeni Lead</Button>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.length > 0 && (
+        <div className="flex items-center gap-3 mb-4 p-3 bg-primary/10 rounded-lg border border-primary/30">
+          <CheckSquare size={16} className="text-primary" />
+          <span className="text-sm font-medium">{selectedIds.length} lead secildi</span>
+          <div className="flex-1" />
+          <Select onValueChange={handleBulkStage}>
+            <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Toplu Asama" /></SelectTrigger>
+            <SelectContent>
+              {STAGES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+            <Trash2 size={12} className="mr-1" /> Toplu Sil
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>Iptal</Button>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[{ label: "Toplam", val: leads.length }, { label: "Yeni", val: leads.filter((l) => l.stage === "new").length }, { label: "Kazanildi", val: leads.filter((l) => l.stage === "won").length }, { label: "Ort. Skor", val: leads.length ? Math.round(leads.reduce((a, l) => a + (l.score || 0), 0) / leads.length) : 0 }].map((s, i) => (
+        {[{ label: "Toplam", val: totalCount }, { label: "Yeni", val: leads.filter((l) => l.stage === "new").length }, { label: "Kazanildi", val: leads.filter((l) => l.stage === "won").length }, { label: "Ort. Skor", val: leads.length ? Math.round(leads.reduce((a, l) => a + (l.score || 0), 0) / leads.length) : 0 }].map((s, i) => (
           <Card key={i}><CardContent className="p-4 text-center"><div className="text-2xl font-bold">{s.val}</div><div className="text-xs text-muted-foreground">{s.label}</div></CardContent></Card>
         ))}
       </div>
