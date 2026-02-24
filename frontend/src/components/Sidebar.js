@@ -1,7 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Palette, Users, FolderOpen, Target, Kanban, Mail, BarChart3, FileText, BookOpen, Shield, ChevronDown, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Palette, Users, FolderOpen, Target, Kanban, Mail, BarChart3, FileText, BookOpen, Shield, ChevronDown, ChevronRight, User, Bell, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getUnreadCount } from "@/lib/api";
 
 const navSections = [
   {
