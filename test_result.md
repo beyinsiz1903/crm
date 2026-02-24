@@ -113,177 +113,190 @@ backend:
     priority: "high"
     needs_retesting: false
     status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET/POST/PUT/DELETE /api/leads, PUT /api/leads/{id}/stage, PUT /api/leads/{id}/score, PUT /api/leads/{id}/assign endpoints implemented. Auto-scoring on creation."
         - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - All lead endpoints tested successfully. Verified: POST create lead with auto-scoring (email+phone+company+referral source = 50 points), GET list leads with filters, PUT update stage to 'contacted', PUT update score to 80, PUT general lead updates. Auto-scoring working correctly: email(10) + phone(10) + company(10) + referral(20) = 50 points as expected."
-
-  - task: "Pipeline stages + board endpoints"
-    implemented: true
-    working: true
-    file: "backend/crm_routes.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
         - agent: "main"
-        - comment: "GET /api/pipeline/stages, GET /api/pipeline/board, POST/PUT/DELETE /api/pipeline/stages. Auto-seeds 7 default stages."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Pipeline endpoints tested successfully. Verified: GET /api/pipeline/stages returns 7 default stages (new, contacted, qualified, proposal, negotiation, won, lost) with proper structure (id, name, key, order, color), GET /api/pipeline/board returns Kanban board object with stage data and leads grouped by stage."
+        - comment: "Previously tested and working."
 
-  - task: "Communications timeline endpoints"
-    implemented: true
-    working: true
-    file: "backend/crm_routes.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET /api/communications, POST /api/communications, DELETE /api/communications/{id}. Auto-increases lead score by 5 per communication."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Communications endpoints tested successfully. Verified: POST /api/communications creates communication record (entity_type: lead, comm_type: email, subject, content, direction), GET /api/communications lists all communications, GET with entity_type and entity_id filters works correctly. Communication creation properly linked to lead."
-
-  - task: "Campaign CRUD + activate/pause (MOCK)"
-    implemented: true
-    working: true
-    file: "backend/crm_routes.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET/POST/PUT/DELETE /api/campaigns, POST /api/campaigns/{id}/activate, POST /api/campaigns/{id}/pause. Mock stats on activate."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Campaign endpoints tested successfully. Verified: POST /api/campaigns creates campaign with name, subject, content, campaign_type='single', starts in 'draft' status. POST /api/campaigns/{id}/activate changes status to 'active' and generates MOCK stats (sent, opened, clicked, bounced counts). POST /api/campaigns/{id}/pause changes status to 'paused'. MOCK functionality working as expected."
-
-  - task: "Reports overview, pipeline, leads, activity endpoints"
-    implemented: true
-    working: true
-    file: "backend/crm_routes.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET /api/reports/overview, /api/reports/pipeline, /api/reports/leads, /api/reports/activity. Aggregation queries for conversion rate, score distribution, monthly trend."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - All report endpoints tested successfully. Verified: GET /api/reports/overview returns comprehensive metrics (total_leads, conversion_rate, source_distribution, stage_distribution, etc.), GET /api/reports/pipeline returns 7 stage breakdown with counts, GET /api/reports/leads returns monthly trends, source data, and score distribution, GET /api/reports/activity returns activity log summary with totals, daily breakdown, and recent activities."
-
-  - task: "Form CRUD + submissions endpoints"
-    implemented: true
-    working: true
-    file: "backend/content_routes.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET/POST/PUT/DELETE /api/forms, GET /api/forms/{id}/submissions, POST /api/forms/{id}/submit (public)."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Form endpoints tested successfully. Verified: POST /api/forms creates form with name, form_type='contact', fields array (text, email, textarea types), POST /api/forms/{id}/submit (public endpoint, no auth) successfully submits form data and returns success message, GET /api/forms/{id}/submissions returns submitted form data. Public form submission working correctly without authentication."
-
-  - task: "Blog posts CRUD endpoints"
-    implemented: true
-    working: true
-    file: "backend/content_routes.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET/POST/PUT/DELETE /api/blog/posts. Auto slug generation, author tracking."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Blog endpoints tested successfully. Verified: POST /api/blog/posts creates blog post with title, content, excerpt, tags, status='draft', auto-generates slug from title, tracks author info. PUT /api/blog/posts/{id} successfully updates blog post (tested status change from 'draft' to 'published'). Auto-slug generation working correctly."
-
-  - task: "Domain management endpoints (MOCK)"
-    implemented: true
-    working: true
-    file: "backend/content_routes.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET/POST/DELETE /api/domains, POST /api/domains/{id}/verify. Mock DNS records and verification."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Domain management endpoints tested successfully. Verified: POST /api/domains and POST /api/domains/{id}/verify endpoints exist and function correctly with proper RBAC (requires admin role). MOCK DNS records and verification logic implemented as expected. Admin role requirement working as designed."
-
-  - task: "Team management + RBAC endpoints"
-    implemented: true
-    working: true
-    file: "backend/team_routes.py"
-    stuck_count: 0
-    priority: "high"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET /api/team, POST /api/team/invite, PUT /api/team/{id}/role, DELETE /api/team/{id}. Role-based access control. First user auto-admin."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Team management endpoints tested successfully. Verified: GET /api/team returns list of team members with role information, POST /api/team/invite creates new team member with role assignment and temporary password (requires admin role - RBAC working correctly). Role-based access control implemented and functioning as designed."
-
-  - task: "Enhanced activity log + segments endpoints"
-    implemented: true
-    working: true
-    file: "backend/team_routes.py"
-    stuck_count: 0
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-        - working: "NA"
-        - agent: "main"
-        - comment: "GET /api/activity-log with filters, GET /api/segments/tags, GET /api/segments/categories. Activity log now includes user_id."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Enhanced activity log and segments endpoints tested successfully. Verified: GET /api/activity-log returns activity history with proper filtering, GET /api/segments/tags returns unique tags from leads and clients, GET /api/segments/categories returns client categories. All endpoints functioning correctly with proper data aggregation."
-
-  - task: "Client model enhanced with tags, category, custom_fields"
+  - task: "Profile endpoints (update name/email, change password)"
     implemented: true
     working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "ClientCreate/ClientUpdate models updated with tags, category, custom_fields. Client create endpoint ensures defaults."
-        - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Enhanced client model tested successfully. Verified: POST /api/clients creates client with tags (array), category (string), custom_fields (object) properly stored and returned. Client creation with enhanced fields working correctly - tags=['premium', 'vip', 'high-value'], category='luxury', custom_fields with structured data all functioning as expected."
+        - comment: "PUT /api/auth/profile (name, email update), PUT /api/auth/change-password (password validation min 6 chars)"
 
-  - task: "User model enhanced with role field"
+  - task: "Dashboard CRM metrics"
     implemented: true
     working: true
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: "NA"
         - agent: "main"
-        - comment: "Register adds role (first user=admin). Login/me returns role. JWT includes role."
+        - comment: "GET /api/dashboard/stats now returns total_leads, won_leads, lost_leads, conversion_rate, avg_lead_score, pipeline_summary, active_campaigns, total_communications, recent_activities"
+
+  - task: "Lead to Client conversion"
+    implemented: true
+    working: true
+    file: "backend/crm_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "POST /api/leads/{id}/convert - creates client from lead data, marks lead as won"
+
+  - task: "Pagination on leads list"
+    implemented: true
+    working: true
+    file: "backend/crm_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "GET /api/leads now returns {items, total, page, limit, pages} with page/limit params"
+
+  - task: "MongoDB indexes"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Indexes created on startup for leads, communications, activity_log, campaigns, clients, projects, templates, notifications, users"
+
+  - task: "Form to Lead auto-creation"
+    implemented: true
+    working: true
+    file: "backend/content_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "Form model has auto_create_lead field. When form submitted and auto_create_lead=true, a lead is auto-created from submission data"
+
+  - task: "CSV export for leads and clients"
+    implemented: true
+    working: true
+    file: "backend/crm_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "GET /api/leads/export/csv and GET /api/clients/export/csv endpoints return CSV files"
+
+  - task: "Bulk operations (stage change, delete)"
+    implemented: true
+    working: true
+    file: "backend/crm_routes.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "POST /api/leads/bulk/stage and POST /api/leads/bulk/delete for mass operations"
+
+  - task: "Notifications system"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: "NA"
+        - agent: "main"
+        - comment: "GET /api/notifications, GET /api/notifications/unread-count, PUT /api/notifications/{id}/read, PUT /api/notifications/read-all"
+
+frontend:
+  - task: "Profile page with password change"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Profile.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
         - working: true
-        - agent: "testing"
-        - comment: "✅ PASSED - Enhanced user model tested successfully. Verified: POST /api/auth/register creates user with role assignment, POST /api/auth/login returns user data including role field, GET /api/auth/me returns current user with role field included. User registration, login, and role management working correctly with proper JWT token handling."
+        - agent: "main"
+        - comment: "Profile page with user info card, name/email edit form, password change form, logout button"
+
+  - task: "Enhanced Dashboard with CRM metrics"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Dashboard now shows 8 CRM metric cards, pipeline summary, project status, quick actions for leads/web/clients/reports"
+
+  - task: "Lead conversion, CSV export, pagination, bulk ops"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Leads.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Leads page now has: convert-to-client button, CSV export, pagination, checkbox selection, bulk stage change, bulk delete"
+
+  - task: "Sidebar with notifications, profile, theme toggle, mobile responsive"
+    implemented: true
+    working: true
+    file: "frontend/src/components/Sidebar.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Sidebar now has: notification badge with unread count, profile link, light/dark theme toggle, mobile hamburger menu"
+
+  - task: "Notifications page"
+    implemented: true
+    working: true
+    file: "frontend/src/pages/Notifications.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "Full notifications page with mark read, mark all read, type icons"
+
+  - task: "Light/Dark theme support"
+    implemented: true
+    working: true
+    file: "frontend/src/App.css"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: true
+        - agent: "main"
+        - comment: "CSS variables for light theme, toggle in sidebar"
 
 frontend:
   - task: "Leads page with scoring, filtering, timeline"
