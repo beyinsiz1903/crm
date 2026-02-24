@@ -123,11 +123,14 @@ backend:
     file: "backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "PUT /api/auth/profile (name, email update), PUT /api/auth/change-password (password validation min 6 chars)"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - All profile endpoints tested successfully. Profile update working correctly (name updated from 'Test User' to 'Updated Name'), password change working with proper validation (successful change from test123456 to newpass123), and error handling working (correctly rejected wrong current password with 400 status). All authentication and profile management features working as expected."
 
   - task: "Dashboard CRM metrics"
     implemented: true
