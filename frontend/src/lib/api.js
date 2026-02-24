@@ -164,4 +164,10 @@ export const getActivity = (limit = 20) =>
 // Seed
 export const seedTemplates = () => api.post("/seed").then((r) => r.data);
 
+// Notifications
+export const getNotifications = () => api.get("/notifications").then((r) => r.data);
+export const getUnreadCount = () => api.get("/notifications/unread-count").then((r) => r.data);
+export const markNotificationRead = (id) => api.put(`/notifications/${id}/read`).then((r) => r.data);
+export const markAllNotificationsRead = () => api.put("/notifications/read-all").then((r) => r.data);
+
 export default api;
