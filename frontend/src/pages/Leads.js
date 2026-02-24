@@ -243,6 +243,9 @@ export default function Leads() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox checked={selectedIds.length === leads.length && leads.length > 0} onCheckedChange={toggleSelectAll} />
+                </TableHead>
                 <TableHead>Ad</TableHead>
                 <TableHead>Sirket</TableHead>
                 <TableHead>Kaynak</TableHead>
@@ -250,14 +253,14 @@ export default function Leads() {
                 <TableHead>Skor</TableHead>
                 <TableHead>Etiketler</TableHead>
                 <TableHead>Tarih</TableHead>
-                <TableHead className="w-[100px]">Islemler</TableHead>
+                <TableHead className="w-[140px]">Islemler</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Yukleniyor...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Yukleniyor...</TableCell></TableRow>
               ) : leads.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Henuz lead yok</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Henuz lead yok</TableCell></TableRow>
               ) : leads.map((lead) => (
                 <TableRow key={lead.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openDetail(lead)}>
                   <TableCell>
