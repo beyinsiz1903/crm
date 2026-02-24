@@ -540,4 +540,111 @@ def create_crm_router(db, get_current_user, log_activity_fn, serialize_doc, seri
 
         return {"total": len(activities), "by_type": type_counts, "daily": daily_list, "recent": serialize_list(activities[:50])}
 
+    # ==================== LEAD CONVERSION ====================
+
+    @router.post("/leads/{lead_id}/convert")
+    async def convert_lead_to_client(lead_id: str, authorization: Optional[str] = Header(None)):
+        """Convert a lead to a client. Creates a client from lead data and marks lead as won."""
+        user = await require_auth(authorization)
+        lead = await db.leads.find_one({"id": lead_id}, {"_id": 0})
+        if not lead:
+            raise HTTPException(404, "Lead bulunamadi")
+        if lead.get("stage") == "won" and lead.get("converted_client_id"):
+            raise HTTPException(400, "Bu lead zaten donusturulmus")
+        now = datetime.now(timezone.utc).isoformat()
+        client_doc = {
+            "id": str(uuid.uuid4()),
+            "hotel_name": lead.get("company") or lead.get("name", ""),
+            "contact_name": lead.get("name", ""),
+            "email": lead.get("email", ""),
+            "phone": lead.get("phone", ""),
+            "address": "",
+            "city": "",
+            "notes": lead.get("notes", ""),
+            "tags": lead.get("tags", []),
+            "category": "",
+            "custom_fields": {"lead_source": lead.get("source", ""), "lead_score": lead.get("score", 0)},
+            "created_at": now,
+            "updated_at": now,
+        }
+        await db.clients.insert_one(client_doc)
+        await db.leads.update_one(
+            {"id": lead_id},
+            {"$set": {"stage": "won", "converted_client_id": client_doc["id"], "updated_at": now}}
+        )
+        await log_activity_fn("lead_converted", f"'{lead.get('name', '')}' musteri olarak donusturuldu", lead_id, "lead", user.get("id", ""))
+        return {"message": "Lead basariyla musteriye donusturuldu", "client_id": client_doc["id"], "client": serialize_doc(client_doc)}
+
+    # ==================== CSV EXPORT ====================
+
+    @router.get("/leads/export/csv")
+    async def export_leads_csv(authorization: Optional[str] = Header(None)):
+        user = await require_auth(authorization)
+        leads = await db.leads.find({}, {"_id": 0}).sort("created_at", -1).to_list(5000)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Ad", "Email", "Telefon", "Sirket", "Kaynak", "Asama", "Skor", "Etiketler", "Notlar", "Olusturma Tarihi"])
+        for lead in leads:
+            writer.writerow([
+                lead.get("name", ""), lead.get("email", ""), lead.get("phone", ""),
+                lead.get("company", ""), lead.get("source", ""), lead.get("stage", ""),
+                lead.get("score", 0), ", ".join(lead.get("tags", [])),
+                lead.get("notes", ""), lead.get("created_at", "")[:10]
+            ])
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=leads_export.csv"}
+        )
+
+    @router.get("/clients/export/csv")
+    async def export_clients_csv(authorization: Optional[str] = Header(None)):
+        user = await require_auth(authorization)
+        clients = await db.clients.find({}, {"_id": 0}).sort("hotel_name", 1).to_list(5000)
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Otel Adi", "Yetkili Kisi", "Email", "Telefon", "Adres", "Sehir", "Kategori", "Etiketler", "Notlar", "Olusturma Tarihi"])
+        for c in clients:
+            writer.writerow([
+                c.get("hotel_name", ""), c.get("contact_name", ""), c.get("email", ""),
+                c.get("phone", ""), c.get("address", ""), c.get("city", ""),
+                c.get("category", ""), ", ".join(c.get("tags", [])),
+                c.get("notes", ""), c.get("created_at", "")[:10]
+            ])
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=clients_export.csv"}
+        )
+
+    # ==================== BULK OPERATIONS ====================
+
+    @router.post("/leads/bulk/stage")
+    async def bulk_update_stage(data: dict, authorization: Optional[str] = Header(None)):
+        user = await require_role(authorization, ["admin", "editor"])
+        lead_ids = data.get("lead_ids", [])
+        stage = data.get("stage", "")
+        if not lead_ids or not stage:
+            raise HTTPException(400, "lead_ids ve stage gerekli")
+        now = datetime.now(timezone.utc).isoformat()
+        result = await db.leads.update_many(
+            {"id": {"$in": lead_ids}},
+            {"$set": {"stage": stage, "updated_at": now}}
+        )
+        await log_activity_fn("bulk_stage_update", f"{result.modified_count} lead asamasi '{stage}' olarak degistirildi", "", "lead", user.get("id", ""))
+        return {"message": f"{result.modified_count} lead guncellendi"}
+
+    @router.post("/leads/bulk/delete")
+    async def bulk_delete_leads(data: dict, authorization: Optional[str] = Header(None)):
+        user = await require_role(authorization, ["admin"])
+        lead_ids = data.get("lead_ids", [])
+        if not lead_ids:
+            raise HTTPException(400, "lead_ids gerekli")
+        result = await db.leads.delete_many({"id": {"$in": lead_ids}})
+        await db.communications.delete_many({"entity_id": {"$in": lead_ids}})
+        await log_activity_fn("bulk_delete", f"{result.deleted_count} lead silindi", "", "lead", user.get("id", ""))
+        return {"message": f"{result.deleted_count} lead silindi"}
+
     return router
