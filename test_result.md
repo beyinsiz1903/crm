@@ -168,11 +168,14 @@ backend:
     file: "backend/crm_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: "NA"
         - agent: "main"
         - comment: "GET /api/leads now returns {items, total, page, limit, pages} with page/limit params"
+        - working: true
+        - agent: "testing"
+        - comment: "✅ PASSED - Pagination working perfectly on leads list. GET /api/leads?page=1&limit=10 returns correct pagination structure with all required fields: items, total, page, limit, pages. Test results: Total: 1, Page: 1, Limit: 10, Pages: 1. Pagination calculations and response format working correctly for leads endpoint."
 
   - task: "MongoDB indexes"
     implemented: true
