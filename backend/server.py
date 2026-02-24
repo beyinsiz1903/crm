@@ -185,7 +185,7 @@ async def update_profile(data: ProfileUpdate, authorization: Optional[str] = Hea
         raise HTTPException(400, "Guncellenecek alan belirtilmedi")
     await db.users.update_one({"id": user["id"]}, {"$set": update_data})
     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
-    await log_activity("profile_updated", f"Profil guncellendi", user["id"], "user", user["id"])
+    await log_activity("profile_updated", "Profil guncellendi", user["id"], "user", user["id"])
     return serialize_doc(updated)
 
 @api_router.put("/auth/change-password")
