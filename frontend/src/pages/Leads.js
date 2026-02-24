@@ -58,17 +58,25 @@ export default function Leads() {
   const [team, setTeam] = useState([]);
   const [comms, setComms] = useState([]);
   const [commForm, setCommForm] = useState({ comm_type: "note", subject: "", content: "", direction: "outbound" });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const load = () => {
     setLoading(true);
-    const params = {};
+    const params = { page, limit: 25 };
     if (search) params.search = search;
     if (stageFilter !== "all") params.stage = stageFilter;
     if (sourceFilter !== "all") params.source = sourceFilter;
-    getLeads(params).then(setLeads).catch(console.error).finally(() => setLoading(false));
+    getLeads(params).then((res) => {
+      setLeads(res.items || res);
+      setTotalPages(res.pages || 1);
+      setTotalCount(res.total || (res.items || res).length);
+    }).catch(console.error).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [search, stageFilter, sourceFilter]);
+  useEffect(() => { load(); }, [search, stageFilter, sourceFilter, page]);
   useEffect(() => { getTeam().then(setTeam).catch(() => {}); }, []);
 
   const loadComms = (leadId) => {
