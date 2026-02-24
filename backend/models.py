@@ -184,3 +184,22 @@ class TeamInvite(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: str
+
+
+# ============ PROFILE ============
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
+# ============ NOTIFICATIONS ============
+class NotificationCreate(BaseModel):
+    title: str
+    message: str
+    type: str = "info"  # info, success, warning, error
+    link: str = ""
