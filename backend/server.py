@@ -727,6 +727,36 @@ async def seed_templates():
 
 @app.on_event("startup")
 async def startup_event():
+    # Create MongoDB indexes for performance
+    try:
+        await db.leads.create_index("stage")
+        await db.leads.create_index("source")
+        await db.leads.create_index("assigned_to")
+        await db.leads.create_index("score")
+        await db.leads.create_index("created_at")
+        await db.leads.create_index("updated_at")
+        await db.leads.create_index([("name", 1), ("email", 1), ("company", 1)])
+        await db.communications.create_index([("entity_type", 1), ("entity_id", 1)])
+        await db.communications.create_index("created_at")
+        await db.activity_log.create_index("created_at")
+        await db.activity_log.create_index("entity_type")
+        await db.activity_log.create_index("user_id")
+        await db.campaigns.create_index("status")
+        await db.clients.create_index("hotel_name")
+        await db.clients.create_index("category")
+        await db.projects.create_index("status")
+        await db.projects.create_index("updated_at")
+        await db.templates.create_index("category")
+        await db.forms.create_index("project_id")
+        await db.blog_posts.create_index("project_id")
+        await db.blog_posts.create_index("status")
+        await db.notifications.create_index([("user_id", 1), ("read", 1)])
+        await db.notifications.create_index("created_at")
+        await db.users.create_index("email", unique=True)
+        logger.info("MongoDB index'leri olusturuldu")
+    except Exception as e:
+        logger.warning(f"Index olusturma hatasi (muhtemelen zaten mevcut): {e}")
+
     count = await db.templates.count_documents({})
     if count < 30:
         logger.info("Sablonlar yukleniyor...")
