@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Search, Star, Phone, Mail, Building2, Tag, Trash2, Edit, ChevronDown, User, Filter, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Star, Phone, Mail, Building2, Tag, Trash2, Edit, ChevronDown, User, Filter, ArrowUpDown, Download, UserCheck, ChevronLeft, ChevronRight, CheckSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import PageHeader from "@/components/PageHeader";
-import { getLeads, createLead, updateLead, deleteLead, getTeam, getCommunications, createCommunication, deleteCommunication } from "@/lib/api";
+import { getLeads, createLead, updateLead, deleteLead, getTeam, getCommunications, createCommunication, deleteCommunication, convertLead, exportLeadsCsv, bulkUpdateStage, bulkDeleteLeads } from "@/lib/api";
 
 const SOURCES = [
   { value: "website", label: "Website" },
