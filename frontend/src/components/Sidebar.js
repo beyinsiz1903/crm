@@ -42,6 +42,24 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState({});
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [theme, setTheme] = useState(localStorage.getItem("syroce_theme") || "dark");
+
+  useEffect(() => {
+    getUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {});
+    const interval = setInterval(() => {
+      getUnreadCount().then((r) => setUnreadCount(r.count)).catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    localStorage.setItem("syroce_theme", newTheme);
+    document.documentElement.classList.toggle("light-theme", newTheme === "light");
+    document.documentElement.setAttribute("data-theme", newTheme);
+  };
 
   const toggleSection = (title) => setCollapsed((p) => ({ ...p, [title]: !p[title] }));
 
