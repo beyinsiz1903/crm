@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 
 # Backend URL from environment
-BASE_URL = "https://crm-lead-scoring.preview.emergentagent.com/api"
+BASE_URL = "https://audit-detailed.preview.emergentagent.com/api"
 
 class CRMTester:
     def __init__(self):
