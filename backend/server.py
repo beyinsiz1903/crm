@@ -31,8 +31,8 @@ from export_service import (
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=3000)
 db = client[os.environ.get('DB_NAME', 'syroce_crm')]
 
 app = FastAPI(title="Syroce CRM API")
@@ -741,6 +741,12 @@ async def seed_templates():
 @app.on_event("startup")
 async def startup_event():
     # Create MongoDB indexes for performance
+    try:
+        # Quick connectivity check with timeout so server can start even if Mongo is unreachable
+        await client.admin.command("ping", check=True)
+    except Exception as e:
+        logger.warning(f"MongoDB baglantisi yok, baslangic init atlandi: {e}")
+        return
     try:
         await db.leads.create_index("stage")
         await db.leads.create_index("source")
