@@ -11,33 +11,76 @@ import PageHeader from "@/components/PageHeader";
 import { getTemplates, createProject } from "@/lib/api";
 import { generatePreviewHTML } from "@/lib/previewRenderer";
 
-const CATEGORIES = [
+const SEGMENTS = [
   { value: "all", label: "Tumu" },
-  { value: "luxury", label: "Luks" },
-  { value: "boutique", label: "Butik" },
-  { value: "resort", label: "Resort & Spa" },
-  { value: "business", label: "Is Oteli" },
-  { value: "beach", label: "Sahil" },
-  { value: "mountain", label: "Dag" },
-  { value: "city", label: "Sehir" },
+  { value: "hotel", label: "Otel" },
+  { value: "restaurant", label: "Restoran" },
+  { value: "agency", label: "Acente" },
 ];
+
+const CATEGORIES_BY_SEGMENT = {
+  all: [{ value: "all", label: "Tum Kategoriler" }],
+  hotel: [
+    { value: "all", label: "Tumu" },
+    { value: "luxury", label: "Luks" },
+    { value: "boutique", label: "Butik" },
+    { value: "resort", label: "Resort & Spa" },
+    { value: "business", label: "Is Oteli" },
+    { value: "beach", label: "Sahil" },
+    { value: "mountain", label: "Dag" },
+    { value: "city", label: "Sehir" },
+    { value: "design", label: "Design" },
+  ],
+  restaurant: [
+    { value: "all", label: "Tumu" },
+    { value: "mediterranean", label: "Akdeniz" },
+    { value: "italian", label: "Italyan" },
+    { value: "sushi", label: "Susi" },
+    { value: "steakhouse", label: "Steakhouse" },
+    { value: "turkish", label: "Turk Mutfagi" },
+    { value: "cafe", label: "Kafe" },
+    { value: "seafood", label: "Deniz Urunleri" },
+    { value: "healthy", label: "Saglikli" },
+    { value: "fusion", label: "Fusion" },
+    { value: "street", label: "Sokak" },
+    { value: "vintage", label: "Vintage" },
+    { value: "trend", label: "Trend" },
+  ],
+  agency: [
+    { value: "all", label: "Tumu" },
+    { value: "international", label: "Yurtdisi" },
+    { value: "domestic", label: "Yurtici" },
+    { value: "culture", label: "Kultur" },
+    { value: "adventure", label: "Macera" },
+    { value: "honeymoon", label: "Balayi" },
+    { value: "transfer", label: "Transfer" },
+    { value: "hajj", label: "Hac & Umre" },
+  ],
+};
 
 export default function TemplateGallery() {
   const navigate = useNavigate();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [segment, setSegment] = useState("all");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
+    setCategory("all");
+  }, [segment]);
+
+  useEffect(() => {
     setLoading(true);
-    getTemplates(category === "all" ? null : category)
+    getTemplates(category === "all" ? null : category, segment === "all" ? null : segment)
       .then(setTemplates)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [category]);
+  }, [category, segment]);
+
+  const currentCategories = CATEGORIES_BY_SEGMENT[segment] || CATEGORIES_BY_SEGMENT.all;
 
   const filtered = templates.filter((t) =>
     !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase())
@@ -61,10 +104,10 @@ export default function TemplateGallery() {
 
   return (
     <div className="page-content">
-      <PageHeader title="Sablon Galerisi" subtitle={`${templates.length} adet otel web sitesi sablonu`} />
+      <PageHeader title="Sablon Galerisi" subtitle={`${templates.length} adet web sitesi sablonu (otel, restoran, acente)`} />
 
       {/* Filter Bar */}
-      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm pb-4 mb-6 -mt-2">
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm pb-4 mb-6 -mt-2 space-y-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 max-w-xs">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -76,21 +119,37 @@ export default function TemplateGallery() {
               data-testid="template-gallery-search"
             />
           </div>
+          <div className="flex flex-wrap gap-2" data-testid="template-gallery-segment-filter">
+            {SEGMENTS.map((seg) => (
+              <Button
+                key={seg.value}
+                variant={segment === seg.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSegment(seg.value)}
+                data-testid={`template-segment-${seg.value}`}
+                className="text-xs"
+              >
+                {seg.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        {currentCategories.length > 1 && (
           <div className="flex flex-wrap gap-2" data-testid="template-gallery-category-filter">
-            {CATEGORIES.map((cat) => (
+            {currentCategories.map((cat) => (
               <Button
                 key={cat.value}
-                variant={category === cat.value ? "default" : "outline"}
+                variant={category === cat.value ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setCategory(cat.value)}
                 data-testid={`template-filter-${cat.value}`}
-                className="text-xs"
+                className="text-xs h-7"
               >
                 {cat.label}
               </Button>
             ))}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Templates Grid */}
@@ -143,7 +202,7 @@ export default function TemplateGallery() {
                     </Button>
                   </div>
                   <Badge className="absolute top-3 left-3 text-[10px] bg-background/80 backdrop-blur-sm">
-                    {CATEGORIES.find((c) => c.value === template.category)?.label || template.category}
+                    {(CATEGORIES_BY_SEGMENT[template.segment] || CATEGORIES_BY_SEGMENT.all).find((c) => c.value === template.category)?.label || template.category}
                   </Badge>
                 </div>
                 <CardContent className="p-4">

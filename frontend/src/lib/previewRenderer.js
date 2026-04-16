@@ -123,7 +123,31 @@ function generateCSS(theme) {
   `;
 }
 
-function renderSection(section, theme, t) {
+function buildQuickLinks(sections, t) {
+  const map = {
+    hero: { href: "#anasayfa", label: t.home },
+    rooms: { href: "#odalar", label: t.rooms },
+    menu: { href: "#menu", label: t.menu || "Menu" },
+    tours: { href: "#turlar", label: t.tours || "Tours" },
+    gallery: { href: "#galeri", label: t.gallery },
+    contact: { href: "#iletisim", label: t.contact },
+  };
+  const seen = new Set();
+  const links = [];
+  (sections || []).forEach((s) => {
+    const entry = map[s.type];
+    if (entry && !seen.has(s.type) && s.visible !== false) {
+      seen.add(s.type);
+      links.push(entry);
+    }
+  });
+  if (links.length === 0) {
+    return `<p><a href="#anasayfa">${t.home}</a></p>`;
+  }
+  return links.map((l) => `<p><a href="${l.href}">${l.label}</a></p>`).join("");
+}
+
+function renderSection(section, theme, t, allSections) {
   const props = section.props || {};
   const type = section.type;
   const pc = theme.primaryColor || "#C5A572";
@@ -152,6 +176,25 @@ function renderSection(section, theme, t) {
         return `<div class="room-card"><img src="${room.image || ""}" alt="${room.name || ""}"><div class="room-card-body"><h3>${room.name || ""}</h3><p>${room.description || ""}</p><div class="room-price">${room.price || ""}</div><div class="room-features">${features}</div></div></div>`;
       }).join("");
       return `<section class="section" id="odalar"><div class="container"><h2 class="section-title">${props.title || ""}</h2><p class="section-subtitle">${props.subtitle || ""}</p><div class="rooms-grid">${roomsHtml}</div></div></section>`;
+    }
+    case "menu": {
+      const items = props.items || [];
+      const itemsHtml = items.map((item) => {
+        const priceHtml = item.price ? `<div class="room-price">${item.price}</div>` : "";
+        return `<div class="room-card"><img src="${item.image || ""}" alt="${item.name || ""}"><div class="room-card-body"><h3>${item.name || ""}</h3><p>${item.description || ""}</p>${priceHtml}</div></div>`;
+      }).join("");
+      const sub = props.subtitle ? `<p class="section-subtitle">${props.subtitle}</p>` : "";
+      return `<section class="section" id="menu"><div class="container"><h2 class="section-title">${props.title || ""}</h2>${sub}<div class="rooms-grid">${itemsHtml}</div></div></section>`;
+    }
+    case "tours": {
+      const tours = props.tours || [];
+      const itemsHtml = tours.map((tour) => {
+        const priceHtml = tour.price ? `<div class="room-price">${tour.price}</div>` : "";
+        const features = tour.duration ? `<div class="room-features"><span>${tour.duration}</span></div>` : "";
+        return `<div class="room-card"><img src="${tour.image || ""}" alt="${tour.name || ""}"><div class="room-card-body"><h3>${tour.name || ""}</h3><p>${tour.description || ""}</p>${priceHtml}${features}</div></div>`;
+      }).join("");
+      const sub = props.subtitle ? `<p class="section-subtitle">${props.subtitle}</p>` : "";
+      return `<section class="section" id="turlar"><div class="container"><h2 class="section-title">${props.title || ""}</h2>${sub}<div class="rooms-grid">${itemsHtml}</div></div></section>`;
     }
     case "gallery": {
       const images = props.images || [];
@@ -212,7 +255,8 @@ function renderSection(section, theme, t) {
     case "footer": {
       const social = props.socialLinks || {};
       const socialHtml = Object.entries(social).map(([platform, link]) => `<a href="${link}" title="${platform}">${platform[0].toUpperCase()}</a>`).join("");
-      return `<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>${props.hotelName || "Hotel"}</h3><p>${props.address || ""}</p><div class="footer-social">${socialHtml}</div></div><div><h3>${t.quick_links}</h3><p><a href="#anasayfa">${t.home}</a></p><p><a href="#odalar">${t.rooms}</a></p><p><a href="#galeri">${t.gallery}</a></p><p><a href="#iletisim">${t.contact}</a></p></div><div><h3>${t.contact}</h3><p>${props.phone || ""}</p><p>${props.email || ""}</p></div></div><div class="footer-bottom"><p>&copy; 2025 ${props.hotelName || "Hotel"}. ${t.all_rights}.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">${t.powered_by} <span>Syroce</span></a></div></div></footer>`;
+      const quickLinksHtml = buildQuickLinks(allSections, t);
+      return `<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>${props.hotelName || "Hotel"}</h3><p>${props.address || ""}</p><div class="footer-social">${socialHtml}</div></div><div><h3>${t.quick_links}</h3>${quickLinksHtml}</div><div><h3>${t.contact}</h3><p>${props.phone || ""}</p><p>${props.email || ""}</p></div></div><div class="footer-bottom"><p>&copy; 2025 ${props.hotelName || "Hotel"}. ${t.all_rights}.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">${t.powered_by} <span>Syroce</span></a></div></div></footer>`;
     }
     default:
       return "";
@@ -364,7 +408,7 @@ export function generatePreviewHTML(sections, theme, lang = "tr") {
   const fontsUrl = `https://fonts.googleapis.com/css2?${[...fontFamilies].map((f) => `family=${f.replace(/ /g, "+")}:wght@400;500;600;700`).join("&")}&display=swap`;
 
   const visibleSections = (sections || []).filter((s) => s.visible !== false);
-  const sectionsHtml = visibleSections.map((s) => renderSection(s, theme, t)).join("\n");
+  const sectionsHtml = visibleSections.map((s) => renderSection(s, theme, t, visibleSections)).join("\n");
   const css = generateCSS(theme);
 
   return `<!DOCTYPE html>

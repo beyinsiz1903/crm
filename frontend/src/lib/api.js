@@ -24,8 +24,12 @@ export const updateProfile = (data) => api.put("/auth/profile", data).then((r) =
 export const changePassword = (data) => api.put("/auth/change-password", data).then((r) => r.data);
 
 // Templates
-export const getTemplates = (category) =>
-  api.get("/templates", { params: category ? { category } : {} }).then((r) => r.data);
+export const getTemplates = (category, segment) => {
+  const params = {};
+  if (category) params.category = category;
+  if (segment) params.segment = segment;
+  return api.get("/templates", { params }).then((r) => r.data);
+};
 export const getTemplate = (id) => api.get(`/templates/${id}`).then((r) => r.data);
 export const createTemplate = (data) => api.post("/templates", data).then((r) => r.data);
 export const updateTemplate = (id, data) => api.put(`/templates/${id}`, data).then((r) => r.data);

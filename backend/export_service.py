@@ -372,6 +372,36 @@ def render_rooms(props, theme, lang="tr"):
     return f'<section class="section" id="odalar"><div class="container"><h2 class="section-title">{title}</h2><p class="section-subtitle">{subtitle}</p><div class="rooms-grid">{rooms_html}</div></div></section>'
 
 
+def render_menu(props, theme, lang="tr"):
+    title = props.get("title", "")
+    subtitle = props.get("subtitle", "")
+    items = props.get("items", [])
+    items_html = ""
+    for item in items:
+        price = item.get("price", "")
+        price_html = f'<div class="room-price">{price}</div>' if price else ""
+        items_html += f'<div class="room-card"><img src="{item.get("image", "")}" alt="{item.get("name", "")}"><div class="room-card-body"><h3>{item.get("name", "")}</h3><p>{item.get("description", "")}</p>{price_html}</div></div>'
+    sub_html = f'<p class="section-subtitle">{subtitle}</p>' if subtitle else ""
+    return f'<section class="section" id="menu"><div class="container"><h2 class="section-title">{title}</h2>{sub_html}<div class="rooms-grid">{items_html}</div></div></section>'
+
+
+def render_tours(props, theme, lang="tr"):
+    title = props.get("title", "")
+    subtitle = props.get("subtitle", "")
+    tours = props.get("tours", [])
+    items_html = ""
+    for tour in tours:
+        duration = tour.get("duration", "")
+        price = tour.get("price", "")
+        features_html = ""
+        if duration:
+            features_html += f'<span>{duration}</span>'
+        price_html = f'<div class="room-price">{price}</div>' if price else ""
+        items_html += f'<div class="room-card"><img src="{tour.get("image", "")}" alt="{tour.get("name", "")}"><div class="room-card-body"><h3>{tour.get("name", "")}</h3><p>{tour.get("description", "")}</p>{price_html}<div class="room-features">{features_html}</div></div></div>'
+    sub_html = f'<p class="section-subtitle">{subtitle}</p>' if subtitle else ""
+    return f'<section class="section" id="turlar"><div class="container"><h2 class="section-title">{title}</h2>{sub_html}<div class="rooms-grid">{items_html}</div></div></section>'
+
+
 def render_gallery(props, theme, lang="tr"):
     title = props.get("title", "")
     images = props.get("images", [])
@@ -477,7 +507,35 @@ def render_booking(props, theme, lang="tr"):
 </section>'''
 
 
-def render_footer(props, theme, lang="tr"):
+SECTION_NAV_MAP = {
+    "hero": ("#anasayfa", "home"),
+    "rooms": ("#odalar", "rooms"),
+    "menu": ("#menu", "menu"),
+    "tours": ("#turlar", "tours"),
+    "gallery": ("#galeri", "gallery"),
+    "contact": ("#iletisim", "contact"),
+}
+
+
+def build_quick_links_from_sections(sections, lang="tr"):
+    t = get_t(lang)
+    seen = set()
+    links = []
+    for s in sections or []:
+        if not s.get("visible", True):
+            continue
+        st = s.get("type")
+        if st in SECTION_NAV_MAP and st not in seen:
+            seen.add(st)
+            href, key = SECTION_NAV_MAP[st]
+            label = t.get(key, key.capitalize())
+            links.append((href, label))
+    if not links:
+        return f'<p><a href="#anasayfa">{t["home"]}</a></p>'
+    return "".join(f'<p><a href="{href}">{label}</a></p>' for href, label in links)
+
+
+def render_footer(props, theme, lang="tr", quick_links_html=None, all_sections=None):
     hotel_name = props.get("hotelName", "Hotel")
     address = props.get("address", "")
     phone = props.get("phone", "")
@@ -485,7 +543,12 @@ def render_footer(props, theme, lang="tr"):
     social = props.get("socialLinks", {})
     t = get_t(lang)
     social_html = "".join([f'<a href="{link}" title="{p.capitalize()}">{p[0].upper()}</a>' for p, link in social.items()])
-    return f'<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>{hotel_name}</h3><p>{address}</p><div class="footer-social">{social_html}</div></div><div><h3>{t["quick_links"]}</h3><p><a href="#anasayfa">{t["home"]}</a></p><p><a href="#odalar">{t["rooms"]}</a></p><p><a href="#galeri">{t["gallery"]}</a></p><p><a href="#iletisim">{t["contact"]}</a></p></div><div><h3>{t["contact"]}</h3><p>{phone}</p><p>{email}</p></div></div><div class="footer-bottom"><p>&copy; 2025 {hotel_name}. {t["all_rights"]}.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">{t["powered_by"]} <span>Syroce</span></a></div></div></footer>'
+    if quick_links_html is None:
+        if all_sections is not None:
+            quick_links_html = build_quick_links_from_sections(all_sections, lang)
+        else:
+            quick_links_html = f'<p><a href="#anasayfa">{t["home"]}</a></p><p><a href="#odalar">{t["rooms"]}</a></p><p><a href="#galeri">{t["gallery"]}</a></p><p><a href="#iletisim">{t["contact"]}</a></p>'
+    return f'<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>{hotel_name}</h3><p>{address}</p><div class="footer-social">{social_html}</div></div><div><h3>{t["quick_links"]}</h3>{quick_links_html}</div><div><h3>{t["contact"]}</h3><p>{phone}</p><p>{email}</p></div></div><div class="footer-bottom"><p>&copy; 2025 {hotel_name}. {t["all_rights"]}.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">{t["powered_by"]} <span>Syroce</span></a></div></div></footer>'
 
 
 SECTION_RENDERERS = {
@@ -493,6 +556,8 @@ SECTION_RENDERERS = {
     "hero": render_hero,
     "about": render_about,
     "rooms": render_rooms,
+    "menu": render_menu,
+    "tours": render_tours,
     "gallery": render_gallery,
     "services": render_services,
     "testimonials": render_testimonials,
@@ -566,9 +631,13 @@ def generate_full_html(project_data: Dict[str, Any]) -> str:
     sections_html = ""
     for section in sections:
         if section.get("visible", True):
-            renderer = SECTION_RENDERERS.get(section.get("type"))
+            stype = section.get("type")
+            renderer = SECTION_RENDERERS.get(stype)
             if renderer:
-                sections_html += renderer(section.get("props", {}), theme, lang)
+                if stype == "footer":
+                    sections_html += render_footer(section.get("props", {}), theme, lang, all_sections=sections)
+                else:
+                    sections_html += renderer(section.get("props", {}), theme, lang)
 
     css = generate_css(theme)
 
@@ -683,87 +752,17 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
     css = generate_css(theme)
     folder = project_name.lower().replace(" ", "-")
 
-    # Collect section data
-    header_props = {}
-    hero_props = {}
-    about_props = {}
-    rooms_props = {}
-    gallery_props = {}
-    services_props = {}
-    testimonials_props = {}
-    contact_props = {}
-    footer_props = {}
-    booking_props = {}
-    banners = []
+    pages, readme_lines = _build_multipage_pages(project_data, sections, theme, lang, t, page_title, css, fonts_url, seo_meta, analytics_code)
 
-    for s in sections:
-        if not s.get("visible", True):
-            continue
-        st = s.get("type")
-        p = s.get("props", {})
-        if st == "header": header_props = p
-        elif st == "hero": hero_props = p
-        elif st == "about": about_props = p
-        elif st == "rooms": rooms_props = p
-        elif st == "gallery": gallery_props = p
-        elif st == "services": services_props = p
-        elif st == "testimonials": testimonials_props = p
-        elif st == "contact": contact_props = p
-        elif st == "footer": footer_props = p
-        elif st == "booking": booking_props = p
-        elif st == "banner": banners.append(p)
-
-    # Multi-page navigation
-    nav_links = [
-        (t["home"], "index.html"),
-        (t["about"], "index.html#hakkimizda"),
-        (t["rooms"], "rooms.html"),
-        (t["gallery"], "gallery.html"),
-        (t["contact"], "contact.html"),
-    ]
-    header_html = render_header(header_props, theme, lang, nav_links=nav_links)
-    footer_html = render_footer(footer_props, theme, lang)
-
-    # Home page: hero + about + services + booking + testimonials + banners
-    home_body = render_hero(hero_props, theme, lang)
-    home_body += render_about(about_props, theme, lang)
-    home_body += render_services(services_props, theme, lang)
-    if booking_props:
-        home_body += render_booking(booking_props, theme, lang)
-    home_body += render_testimonials(testimonials_props, theme, lang)
-    for bp in banners:
-        home_body += render_banner(bp, theme, lang)
-    home_html = _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code)
-
-    # Rooms page
-    rooms_body = '<div style="padding-top:80px"></div>'
-    rooms_body += render_rooms(rooms_props, theme, lang)
-    rooms_html = _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, rooms_body, footer_html, analytics_code)
-
-    # Gallery page
-    gallery_body = '<div style="padding-top:80px"></div>'
-    gallery_body += render_gallery(gallery_props, theme, lang)
-    gallery_html = _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, gallery_body, footer_html, analytics_code)
-
-    # Contact page
-    contact_body = '<div style="padding-top:80px"></div>'
-    contact_body += render_contact(contact_props, theme, lang)
-    contact_html = _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, contact_body, footer_html, analytics_code)
-
-    # Create ZIP
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(f"{folder}/index.html", home_html)
-        zf.writestr(f"{folder}/rooms.html", rooms_html)
-        zf.writestr(f"{folder}/gallery.html", gallery_html)
-        zf.writestr(f"{folder}/contact.html", contact_html)
+        for page_name, html in pages.items():
+            zf.writestr(f"{folder}/{page_name}", html)
+        pages_list = "\n".join(f"- {line}" for line in readme_lines)
         readme = f"""# {project_name}
 
 ## Pages
-- index.html (Home)
-- rooms.html (Rooms)
-- gallery.html (Gallery)
-- contact.html (Contact)
+{pages_list}
 
 ## Setup
 1. Upload all files to your web server
@@ -784,6 +783,90 @@ Powered by Syroce - https://syroce.com
     return buffer.getvalue()
 
 
+def _build_multipage_pages(project_data, sections, theme, lang, t, page_title, css, fonts_url, seo_meta, analytics_code):
+    """Segment-aware multipage builder. Emits index + one page per detail section present."""
+    header_props = {}
+    footer_props = {}
+    hero_props = {}
+    about_props = {}
+    services_props = {}
+    testimonials_props = {}
+    booking_props = {}
+    contact_props = {}
+    rooms_props = None
+    menu_props = None
+    tours_props = None
+    gallery_props = None
+    banners = []
+
+    for s in sections:
+        if not s.get("visible", True):
+            continue
+        st = s.get("type")
+        p = s.get("props", {})
+        if st == "header": header_props = p
+        elif st == "footer": footer_props = p
+        elif st == "hero": hero_props = p
+        elif st == "about": about_props = p
+        elif st == "services": services_props = p
+        elif st == "testimonials": testimonials_props = p
+        elif st == "booking": booking_props = p
+        elif st == "contact": contact_props = p
+        elif st == "rooms": rooms_props = p
+        elif st == "menu": menu_props = p
+        elif st == "tours": tours_props = p
+        elif st == "gallery": gallery_props = p
+        elif st == "banner": banners.append(p)
+
+    # Dynamic nav: index + each detail page that exists
+    nav_links = [(t["home"], "index.html"), (t["about"], "index.html#hakkimizda")]
+    detail_pages = []  # (filename, title, body_html, readme_label)
+
+    if rooms_props is not None:
+        nav_links.append((t.get("rooms", "Rooms"), "rooms.html"))
+        detail_pages.append(("rooms.html", t.get("rooms", "Rooms"), render_rooms(rooms_props, theme, lang), "rooms.html (Rooms)"))
+    if menu_props is not None:
+        nav_links.append((t.get("menu", "Menu"), "menu.html"))
+        detail_pages.append(("menu.html", t.get("menu", "Menu"), render_menu(menu_props, theme, lang), "menu.html (Menu)"))
+    if tours_props is not None:
+        nav_links.append((t.get("tours", "Tours"), "tours.html"))
+        detail_pages.append(("tours.html", t.get("tours", "Tours"), render_tours(tours_props, theme, lang), "tours.html (Tours)"))
+    if gallery_props is not None:
+        nav_links.append((t["gallery"], "gallery.html"))
+        detail_pages.append(("gallery.html", t["gallery"], render_gallery(gallery_props, theme, lang), "gallery.html (Gallery)"))
+    nav_links.append((t["contact"], "contact.html"))
+
+    # Quick links pointing to detail pages
+    quick_links_html = "".join(f'<p><a href="{href}">{label}</a></p>' for label, href in nav_links)
+
+    header_html = render_header(header_props, theme, lang, nav_links=nav_links)
+    footer_html = render_footer(footer_props, theme, lang, quick_links_html=quick_links_html)
+
+    # Home page
+    home_body = render_hero(hero_props, theme, lang) if hero_props else ""
+    if about_props: home_body += render_about(about_props, theme, lang)
+    if services_props: home_body += render_services(services_props, theme, lang)
+    if booking_props: home_body += render_booking(booking_props, theme, lang)
+    if testimonials_props: home_body += render_testimonials(testimonials_props, theme, lang)
+    for bp in banners:
+        home_body += render_banner(bp, theme, lang)
+
+    pages = {"index.html": _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code)}
+    readme_lines = ["index.html (Home)"]
+
+    for filename, ptitle, body_html, readme_label in detail_pages:
+        full_body = '<div style="padding-top:80px"></div>' + body_html
+        pages[filename] = _build_page_html(f"{ptitle} - {page_title}", css, fonts_url, seo_meta, lang, header_html, full_body, footer_html, analytics_code)
+        readme_lines.append(readme_label)
+
+    # Contact page
+    contact_body = '<div style="padding-top:80px"></div>' + render_contact(contact_props, theme, lang)
+    pages["contact.html"] = _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, contact_body, footer_html, analytics_code)
+    readme_lines.append("contact.html (Contact)")
+
+    return pages, readme_lines
+
+
 async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) -> bytes:
     """Create multipage export ZIP with bundled assets."""
     theme = project_data.get("theme", {})
@@ -799,60 +882,7 @@ async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) 
     css = generate_css(theme)
     folder = project_name.lower().replace(" ", "-")
 
-    header_props = {}
-    hero_props = {}
-    about_props = {}
-    rooms_props = {}
-    gallery_props = {}
-    services_props = {}
-    testimonials_props = {}
-    contact_props = {}
-    footer_props = {}
-    booking_props = {}
-    banners = []
-
-    for s in sections:
-        if not s.get("visible", True):
-            continue
-        st = s.get("type")
-        p = s.get("props", {})
-        if st == "header": header_props = p
-        elif st == "hero": hero_props = p
-        elif st == "about": about_props = p
-        elif st == "rooms": rooms_props = p
-        elif st == "gallery": gallery_props = p
-        elif st == "services": services_props = p
-        elif st == "testimonials": testimonials_props = p
-        elif st == "contact": contact_props = p
-        elif st == "footer": footer_props = p
-        elif st == "booking": booking_props = p
-        elif st == "banner": banners.append(p)
-
-    nav_links = [
-        (t["home"], "index.html"),
-        (t["about"], "index.html#hakkimizda"),
-        (t["rooms"], "rooms.html"),
-        (t["gallery"], "gallery.html"),
-        (t["contact"], "contact.html"),
-    ]
-    header_html = render_header(header_props, theme, lang, nav_links=nav_links)
-    footer_html = render_footer(footer_props, theme, lang)
-
-    home_body = render_hero(hero_props, theme, lang)
-    home_body += render_about(about_props, theme, lang)
-    home_body += render_services(services_props, theme, lang)
-    if booking_props:
-        home_body += render_booking(booking_props, theme, lang)
-    home_body += render_testimonials(testimonials_props, theme, lang)
-    for bp in banners:
-        home_body += render_banner(bp, theme, lang)
-
-    pages = {
-        "index.html": _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code),
-        "rooms.html": _build_page_html(f"{t['rooms']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, '<div style="padding-top:80px"></div>' + render_rooms(rooms_props, theme, lang), footer_html, analytics_code),
-        "gallery.html": _build_page_html(f"{t['gallery']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, '<div style="padding-top:80px"></div>' + render_gallery(gallery_props, theme, lang), footer_html, analytics_code),
-        "contact.html": _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, '<div style="padding-top:80px"></div>' + render_contact(contact_props, theme, lang), footer_html, analytics_code),
-    }
+    pages, readme_lines = _build_multipage_pages(project_data, sections, theme, lang, t, page_title, css, fonts_url, seo_meta, analytics_code)
 
     # Bundle assets for all pages
     all_assets = {}
@@ -868,7 +898,8 @@ async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) 
             zf.writestr(f"{folder}/{page_name}", html)
         for asset_path, asset_data in all_assets.items():
             zf.writestr(f"{folder}/{asset_path}", asset_data)
-        readme = f"""# {project_name}\n\n## Pages\n- index.html (Home)\n- rooms.html\n- gallery.html\n- contact.html\n\n## Assets\nImages have been bundled in the assets/ folder.\n\n---\nPowered by Syroce"""
+        pages_list = "\n".join(f"- {line}" for line in readme_lines)
+        readme = f"""# {project_name}\n\n## Pages\n{pages_list}\n\n## Assets\nImages have been bundled in the assets/ folder.\n\n---\nPowered by Syroce"""
         zf.writestr(f"{folder}/README.md", readme)
     buffer.seek(0)
     return buffer.getvalue()

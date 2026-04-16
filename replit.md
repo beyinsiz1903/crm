@@ -2,6 +2,15 @@
 
 A Customer Relationship Management system with website builder/template features for the hospitality industry.
 
+## Templates
+
+105 built-in templates, generated programmatically in `backend/templates_data.py`:
+- **40 hotel** templates (segment=`hotel`, section `rooms`; some include optional `menu`)
+- **35 restaurant** templates (segment=`restaurant`, section `menu`)
+- **30 agency** templates (segment=`agency`, section `tours`)
+
+Each template is standalone for its segment. Section types `menu` and `tours` are rendered in the frontend preview (`previewRenderer.js`) and in the backend HTML exporter (`export_service.py`). Multi-page export is segment-aware and emits `menu.html` / `tours.html` / `rooms.html` depending on what sections are present. Seed logic in `server.py` auto-reseeds built-ins when the stored count is below the generator target.
+
 ## Tech Stack
 
 - **Frontend**: React 19 (CRA + CRACO), Tailwind CSS, Radix UI, React Router v7, Axios

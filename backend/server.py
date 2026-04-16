@@ -263,11 +263,13 @@ async def upload_file(file: UploadFile = File(...)):
 # ==================== TEMPLATES ====================
 
 @api_router.get("/templates")
-async def list_templates(category: Optional[str] = None):
+async def list_templates(category: Optional[str] = None, segment: Optional[str] = None):
     query = {}
     if category and category != "all":
         query["category"] = category
-    templates = await db.templates.find(query, {"_id": 0}).sort("name", 1).to_list(100)
+    if segment and segment != "all":
+        query["segment"] = segment
+    templates = await db.templates.find(query, {"_id": 0}).sort("name", 1).to_list(200)
     return serialize_list(templates)
 
 @api_router.get("/templates/{template_id}")
@@ -729,14 +731,15 @@ async def get_activity(limit: int = 20):
 
 @api_router.post("/seed")
 async def seed_templates():
+    builtin = generate_all_templates()
+    target_count = len(builtin)
     count = await db.templates.count_documents({"is_custom": {"$ne": True}})
-    if count >= 30:
+    if count >= target_count:
         return {"message": "Sablonlar zaten mevcut", "count": count}
     await db.templates.delete_many({"is_custom": {"$ne": True}})
-    templates = generate_all_templates()
-    if templates:
-        await db.templates.insert_many(templates)
-    return {"message": f"{len(templates)} sablon yuklendi", "count": len(templates)}
+    if builtin:
+        await db.templates.insert_many(builtin)
+    return {"message": f"{len(builtin)} sablon yuklendi", "count": len(builtin)}
 
 @app.on_event("startup")
 async def startup_event():
@@ -776,11 +779,12 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Index olusturma hatasi (muhtemelen zaten mevcut): {e}")
 
-    count = await db.templates.count_documents({})
-    if count < 30:
-        logger.info("Sablonlar yukleniyor...")
+    templates = generate_all_templates()
+    target_count = len(templates)
+    count = await db.templates.count_documents({"is_custom": {"$ne": True}})
+    if count < target_count:
+        logger.info(f"Sablonlar yukleniyor (mevcut: {count}, hedef: {target_count})...")
         await db.templates.delete_many({"is_custom": {"$ne": True}})
-        templates = generate_all_templates()
         if templates:
             await db.templates.insert_many(templates)
         logger.info(f"{len(templates)} sablon yuklendi")
