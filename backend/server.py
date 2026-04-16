@@ -821,6 +821,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Serve built frontend in production (single-port deployment)
+FRONTEND_BUILD_DIR = ROOT_DIR.parent / "frontend" / "build"
+if FRONTEND_BUILD_DIR.exists():
+    from fastapi.responses import FileResponse
+    from fastapi import Request
+
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(FRONTEND_BUILD_DIR / "static")),
+        name="frontend-static",
+    )
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str, request: Request):
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+        candidate = FRONTEND_BUILD_DIR / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(str(candidate))
+        return FileResponse(str(FRONTEND_BUILD_DIR / "index.html"))
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
