@@ -241,7 +241,6 @@ export default function TemplateGallery() {
                 srcDoc={generatePreviewHTML(previewTemplate.sections, previewTemplate.theme)}
                 className="w-full h-full border-0"
                 title="Template Preview"
-                sandbox="allow-same-origin"
               />
             )}
           </div>

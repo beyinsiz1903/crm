@@ -991,7 +991,7 @@ export default function TemplateEditor() {
         {/* Right Panel - Preview */}
         <div className="editor-right">
           <div className={`preview-frame ${deviceMode}`}>
-            <iframe srcDoc={previewHtml} title="Preview" data-testid="editor-preview-iframe" sandbox="allow-same-origin" />
+            <iframe srcDoc={previewHtml} title="Preview" data-testid="editor-preview-iframe" />
           </div>
         </div>
       </div>
