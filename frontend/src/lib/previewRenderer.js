@@ -22,7 +22,7 @@ function generateCSS(theme) {
 
   return `
     *{margin:0;padding:0;box-sizing:border-box}
-    html{scroll-behavior:smooth}
+    html{scroll-behavior:smooth;scroll-padding-top:90px}
     body{font-family:${bf};color:${tc};background:${bg};line-height:1.7}
     h1,h2,h3,h4{font-family:${hf};line-height:1.3}
     img{max-width:100%;height:auto}
@@ -423,6 +423,24 @@ export function generatePreviewHTML(sections, theme, lang = "tr") {
 </head>
 <body>
 ${sectionsHtml}
+<script>
+  document.addEventListener('click', function(e){
+    var a = e.target.closest('a');
+    if(!a) return;
+    var href = a.getAttribute('href') || '';
+    if(href.charAt(0) !== '#') return;
+    e.preventDefault();
+    if(href === '#' || href.length < 2){
+      window.scrollTo({top:0, behavior:'smooth'});
+      return;
+    }
+    var el = document.getElementById(href.slice(1));
+    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+  document.addEventListener('submit', function(e){
+    if(e.target.tagName === 'FORM'){ e.preventDefault(); }
+  });
+</script>
 </body>
 </html>`;
 }

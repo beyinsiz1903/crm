@@ -222,7 +222,7 @@ def generate_css(theme: Dict[str, Any]) -> str:
     bf = theme.get("bodyFont", "'Lato', sans-serif")
     return f"""
     *{{margin:0;padding:0;box-sizing:border-box}}
-    html{{scroll-behavior:smooth}}
+    html{{scroll-behavior:smooth;scroll-padding-top:90px}}
     body{{font-family:{bf};color:{tc};background:{bg};line-height:1.7}}
     h1,h2,h3,h4{{font-family:{hf};line-height:1.3}}
     img{{max-width:100%;height:auto}}
