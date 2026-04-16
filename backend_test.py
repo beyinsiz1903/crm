@@ -14,7 +14,7 @@ import sys
 import os
 
 # Backend URL from frontend .env
-BACKEND_URL = "https://audit-detailed.preview.emergentagent.com/api"
+BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000/api")
 
 class SyroceCRMTester:
     def __init__(self):
