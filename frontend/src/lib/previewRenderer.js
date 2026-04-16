@@ -12,6 +12,134 @@ const SERVICE_ICONS = {
 
 const STAR_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
 
+const STYLE_OVERRIDES = {
+  classic: (pc, sc, bg, tc, hf, bf) => "",
+  minimal: (pc, sc, bg, tc, hf, bf) => `
+    body{font-family:${bf}}
+    h1,h2,h3,h4{font-family:${bf};font-weight:300;letter-spacing:-0.01em}
+    .section{padding:140px 0;background:#fff}
+    .section-title{text-align:left;font-size:clamp(1.5rem,2.4vw,2.2rem);font-weight:300;margin-bottom:8px;letter-spacing:-0.02em;border-bottom:1px solid #e5e5e5;padding-bottom:18px}
+    .section-subtitle{text-align:left;font-size:0.95rem;letter-spacing:0.04em;text-transform:uppercase;opacity:0.5;margin-bottom:50px}
+    .btn{background:transparent;color:${pc};border:1px solid ${pc};border-radius:0;padding:12px 32px;text-transform:uppercase;letter-spacing:0.15em;font-size:0.78rem;font-weight:500}
+    .btn:hover{background:${pc};color:#fff;transform:none}
+    .room-card,.service-card,.testimonial-card{box-shadow:none;border:1px solid #ececec;border-radius:0;background:#fff}
+    .room-card:hover,.service-card:hover{transform:none;border-color:${pc}}
+    .room-card img{height:280px}
+    .site-header{padding:18px 0;background:#fff !important;border-bottom:1px solid #ececec}
+    .site-header .logo{color:${sc};font-size:1.2rem;letter-spacing:0.2em;text-transform:uppercase;font-family:${bf};font-weight:400}
+    .site-header nav a{color:${tc};text-transform:uppercase;letter-spacing:0.1em;font-size:0.8rem;font-weight:400}
+    .hero{min-height:90vh}
+    .hero-overlay{background:rgba(0,0,0,0.25)}
+    .hero h1{font-weight:300;letter-spacing:-0.03em}
+    .room-card-body{padding:30px 25px}
+    .room-features span{background:transparent;border:1px solid ${pc}40;border-radius:0;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em}
+  `,
+  "luxury-dark": (pc, sc, bg, tc, hf, bf) => `
+    body{background:#0E0E10;color:#D4D4D8}
+    h1,h2,h3,h4{color:#FAFAF5}
+    .section{padding:130px 0;background:#0E0E10}
+    .section:nth-of-type(even){background:#15151A}
+    .section-title{color:#FAFAF5;font-size:clamp(2rem,4vw,3.6rem);font-weight:400;letter-spacing:0.02em}
+    .section-title::after{content:"";display:block;width:60px;height:1px;background:${pc};margin:24px auto 0}
+    .section-subtitle{color:#A1A1AA;letter-spacing:0.06em;font-size:0.95rem;text-transform:uppercase}
+    .btn{background:transparent;color:${pc};border:1px solid ${pc};border-radius:0;padding:14px 44px;text-transform:uppercase;letter-spacing:0.2em;font-size:0.8rem;font-weight:500}
+    .btn:hover{background:${pc};color:#0E0E10;transform:none}
+    .site-header.solid,.site-header{background:rgba(14,14,16,0.85);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,0.08)}
+    .site-header .logo{color:${pc};font-family:${hf};font-weight:400;letter-spacing:0.15em;font-size:1.4rem;text-transform:uppercase}
+    .room-card,.service-card,.testimonial-card{background:#15151A;border:1px solid rgba(255,255,255,0.06);box-shadow:none;border-radius:0;color:#D4D4D8}
+    .room-card:hover{transform:translateY(-3px);border-color:${pc}}
+    .room-card h3,.service-card h3{color:#FAFAF5}
+    .room-card p,.service-card p,.testimonial-card p{color:#A1A1AA}
+    .room-price{color:${pc}}
+    .room-features span{background:rgba(197,165,114,0.1);color:${pc};border-radius:0}
+    .hero-overlay{background:linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.85))}
+    .hero h1{font-weight:400;letter-spacing:0.04em}
+    .hero h1::after{content:"";display:block;width:80px;height:1px;background:${pc};margin:30px auto}
+    .gallery-grid{background:transparent}
+    .contact-form input,.contact-form textarea{background:#15151A;border:1px solid rgba(255,255,255,0.1);color:#FAFAF5}
+    .contact-form input::placeholder,.contact-form textarea::placeholder{color:#71717A}
+  `,
+  rustic: (pc, sc, bg, tc, hf, bf) => `
+    body{background:${bg}}
+    .section{padding:90px 0}
+    .section:nth-of-type(even){background:rgba(0,0,0,0.02)}
+    .section-title{font-style:italic;font-weight:400;color:${sc}}
+    .section-title::before{content:"~ ";color:${pc};font-style:normal}
+    .section-title::after{content:" ~";color:${pc};font-style:normal}
+    .btn{border-radius:50px;padding:14px 38px;background:${pc};box-shadow:0 4px 12px ${pc}40;font-weight:600}
+    .btn:hover{box-shadow:0 6px 18px ${pc}60;transform:translateY(-2px)}
+    .room-card,.service-card,.testimonial-card{border-radius:20px;background:#FFFCF7;border:2px dashed ${pc}30;box-shadow:none}
+    .room-card:hover{border-style:solid;border-color:${pc};transform:translateY(-3px)}
+    .room-card img{border-radius:18px 18px 0 0}
+    .room-features span{border-radius:50px;padding:5px 14px}
+    .site-header.solid{background:${sc}}
+    .site-header .logo{font-style:italic}
+    .hero h1{font-style:italic;font-weight:400}
+    .gallery-item{border-radius:16px}
+    .service-card{padding:50px 30px}
+    .contact-form input,.contact-form textarea{border-radius:50px;padding:14px 22px}
+    .contact-form textarea{border-radius:20px}
+  `,
+  "bold-modern": (pc, sc, bg, tc, hf, bf) => `
+    h1,h2,h3,h4{font-weight:800;letter-spacing:-0.03em;text-transform:none}
+    .section{padding:100px 0}
+    .section:nth-of-type(odd){background:${bg}}
+    .section:nth-of-type(even){background:${pc}08}
+    .section-title{font-size:clamp(2.2rem,5vw,4rem);text-align:left;font-weight:900;line-height:1;margin-bottom:20px;letter-spacing:-0.04em}
+    .section-subtitle{text-align:left;font-size:1.1rem;font-weight:500;max-width:600px;margin-left:0;margin-bottom:60px}
+    .btn{border-radius:0;padding:18px 48px;text-transform:uppercase;letter-spacing:0.06em;font-weight:800;font-size:0.95rem}
+    .btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 ${sc}}
+    .room-card,.service-card{background:${sc};color:#fff;border-radius:0;box-shadow:none;border:none}
+    .room-card h3,.service-card h3{color:#fff;font-weight:800}
+    .room-card p,.service-card p{color:rgba(255,255,255,0.75)}
+    .room-card:hover,.service-card:hover{transform:translate(-4px,-4px);box-shadow:8px 8px 0 ${pc}}
+    .room-card img{border-radius:0}
+    .room-price{color:${pc};font-size:1.8rem;font-weight:900}
+    .room-features span{background:rgba(255,255,255,0.1);color:#fff;border-radius:0;border:1px solid rgba(255,255,255,0.2)}
+    .testimonial-card{border-radius:0;border-left:6px solid ${pc};box-shadow:none;background:#fff}
+    .gallery-item{border-radius:0}
+    .site-header.solid{background:${sc}}
+    .site-header .logo{font-weight:900;letter-spacing:-0.02em;text-transform:uppercase}
+    .site-header nav a{font-weight:700;text-transform:uppercase;font-size:0.85rem;letter-spacing:0.08em}
+    .hero h1{font-weight:900;letter-spacing:-0.04em;text-align:left}
+    .hero p{text-align:left;font-weight:500}
+    .hero-content{text-align:left;max-width:900px;margin:0;padding:40px 60px}
+    .hero{justify-content:flex-start}
+    .hero-overlay{background:rgba(0,0,0,0.35)}
+    .contact-form input,.contact-form textarea{border-radius:0;border-width:2px;border-color:${sc}}
+    .contact-form input:focus,.contact-form textarea:focus{border-color:${pc}}
+  `,
+  magazine: (pc, sc, bg, tc, hf, bf) => `
+    body{font-family:${bf};font-size:1.05rem}
+    .section{padding:110px 0}
+    .section-title{text-align:left;font-style:italic;font-weight:400;font-size:clamp(2rem,3.2vw,3rem);position:relative;padding-top:30px;margin-bottom:10px}
+    .section-title::before{content:"";position:absolute;top:0;left:0;width:50px;height:3px;background:${pc}}
+    .section-subtitle{text-align:left;font-size:1.05rem;color:${tc};opacity:0.8;font-style:italic;margin-bottom:55px;max-width:680px;margin-left:0}
+    .btn{background:transparent;color:${sc};border:none;border-bottom:2px solid ${sc};border-radius:0;padding:8px 0;font-weight:600;font-size:1rem;letter-spacing:0.04em}
+    .btn::after{content:" →";transition:margin 0.2s}
+    .btn:hover{transform:none;color:${pc};border-color:${pc}}
+    .btn:hover::after{margin-left:6px}
+    .room-card,.service-card,.testimonial-card{background:#fff;border:none;border-top:3px solid ${pc};border-radius:0;box-shadow:none;padding-top:0}
+    .room-card{padding-top:0}
+    .room-card:hover{transform:none;border-top-width:6px;margin-top:-3px}
+    .room-card img{border-radius:0;height:230px}
+    .room-card-body{padding:25px 0}
+    .room-card h3{font-style:italic;font-weight:400}
+    .testimonial-card{padding:30px 0;border-top:1px solid #e5e5e5}
+    .testimonial-card p{font-style:italic;font-size:1.2rem;line-height:1.6;color:${sc}}
+    .testimonial-card p::before{content:"\u201C";font-size:3rem;color:${pc};line-height:0;vertical-align:-0.5em;margin-right:6px}
+    .site-header.solid{background:${sc}}
+    .site-header .logo{font-style:italic;font-weight:400;letter-spacing:0;font-size:2rem}
+    .hero h1{font-style:italic;font-weight:400}
+    .hero h1::first-letter{color:${pc}}
+    .hero-overlay{background:rgba(0,0,0,0.45)}
+    .gallery-item{border-radius:0}
+    .service-card{text-align:left;padding:30px 0}
+    .service-icon{display:block;text-align:left}
+    .room-features span{border-radius:0;background:transparent;border-bottom:1px solid ${pc};padding:2px 0;margin-right:12px}
+  `,
+};
+
 function generateCSS(theme) {
   const pc = theme.primaryColor || "#C5A572";
   const sc = theme.secondaryColor || "#1A1A2E";
@@ -19,6 +147,8 @@ function generateCSS(theme) {
   const tc = theme.textColor || "#333333";
   const hf = theme.headerFont || "'Playfair Display', serif";
   const bf = theme.bodyFont || "'Lato', sans-serif";
+  const style = theme.style || "classic";
+  const styleCSS = (STYLE_OVERRIDES[style] || STYLE_OVERRIDES.classic)(pc, sc, bg, tc, hf, bf);
 
   return `
     *{margin:0;padding:0;box-sizing:border-box}
@@ -120,6 +250,7 @@ function generateCSS(theme) {
       .section{padding:60px 0}
       .booking-form{grid-template-columns:1fr}
     }
+    ${styleCSS}
   `;
 }
 

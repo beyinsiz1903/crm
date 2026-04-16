@@ -782,8 +782,14 @@ async def startup_event():
     templates = generate_all_templates()
     target_count = len(templates)
     count = await db.templates.count_documents({"is_custom": {"$ne": True}})
-    if count < target_count:
-        logger.info(f"Sablonlar yukleniyor (mevcut: {count}, hedef: {target_count})...")
+    # Detect templates missing the design "style" field (older seeds) and force refresh
+    missing_style = await db.templates.count_documents({
+        "is_custom": {"$ne": True},
+        "theme.style": {"$exists": False},
+    })
+    if count < target_count or missing_style > 0:
+        reason = "design style upgrade" if missing_style > 0 else f"count {count}<{target_count}"
+        logger.info(f"Sablonlar yenileniyor ({reason})...")
         await db.templates.delete_many({"is_custom": {"$ne": True}})
         if templates:
             await db.templates.insert_many(templates)

@@ -1052,6 +1052,63 @@ AGENCY_CONFIGS = [
 # TEMPLATE GENERATION
 # ============================================================
 
+# Distinct visual design styles. Each produces dramatically different CSS treatment
+# (typography, button shapes, card styles, spacing, color application).
+DESIGN_STYLES = ["classic", "minimal", "luxury-dark", "rustic", "bold-modern", "magazine"]
+
+# Default style by category - gives each category a coherent visual identity.
+# Templates within the same category get rotated through 2-3 styles for variety.
+_CATEGORY_STYLE_POOLS = {
+    # hotel
+    "luxury": ["luxury-dark", "classic", "magazine"],
+    "boutique": ["magazine", "minimal", "rustic"],
+    "resort": ["classic", "rustic", "bold-modern"],
+    "beach": ["minimal", "bold-modern", "classic"],
+    "mountain": ["rustic", "luxury-dark", "classic"],
+    "city": ["bold-modern", "minimal", "luxury-dark"],
+    "business": ["minimal", "bold-modern"],
+    "design": ["bold-modern", "minimal", "luxury-dark"],
+    # restaurant
+    "mediterranean": ["rustic", "classic", "minimal"],
+    "italian": ["magazine", "rustic", "classic"],
+    "turkish": ["rustic", "classic", "magazine"],
+    "vintage": ["magazine", "classic", "rustic"],
+    "steakhouse": ["luxury-dark", "bold-modern", "magazine"],
+    "cafe": ["minimal", "magazine", "rustic"],
+    "seafood": ["minimal", "classic", "luxury-dark"],
+    "vegan": ["minimal", "rustic", "magazine"],
+    "asian": ["minimal", "luxury-dark", "magazine"],
+    "japanese": ["minimal", "luxury-dark"],
+    "indian": ["luxury-dark", "rustic", "bold-modern"],
+    "mexican": ["bold-modern", "rustic"],
+    "french": ["luxury-dark", "magazine", "classic"],
+    "fusion": ["bold-modern", "magazine", "minimal"],
+    "fastfood": ["bold-modern", "minimal"],
+    "brunch": ["minimal", "magazine", "rustic"],
+    "patisserie": ["magazine", "minimal", "rustic"],
+    # agency
+    "international": ["bold-modern", "magazine", "classic"],
+    "domestic": ["classic", "rustic", "magazine"],
+    "cultural": ["magazine", "classic", "luxury-dark"],
+    "adventure": ["bold-modern", "rustic", "minimal"],
+    "luxury-travel": ["luxury-dark", "magazine", "classic"],
+    "honeymoon": ["magazine", "classic", "luxury-dark"],
+    "corporate": ["minimal", "bold-modern"],
+    "religious": ["classic", "luxury-dark", "magazine"],
+    "ski": ["minimal", "bold-modern", "rustic"],
+    "cruise": ["luxury-dark", "classic", "minimal"],
+    "safari": ["rustic", "bold-modern", "magazine"],
+}
+
+
+def _pick_style(category, template_id):
+    pool = _CATEGORY_STYLE_POOLS.get(category)
+    if not pool:
+        # fallback: deterministic rotation across all 6 styles based on id
+        return DESIGN_STYLES[sum(ord(c) for c in template_id) % len(DESIGN_STYLES)]
+    return pool[sum(ord(c) for c in template_id) % len(pool)]
+
+
 def _build_template(cfg, category_key, sections):
     hero_idx = cfg.get("heroIdx", 0)
     if category_key == "hotel":
@@ -1061,6 +1118,11 @@ def _build_template(cfg, category_key, sections):
     else:
         thumb = AGENCY_HERO_IMAGES[hero_idx % len(AGENCY_HERO_IMAGES)]
 
+    # Inject visual design style into theme
+    theme = dict(cfg["theme"])
+    if "style" not in theme:
+        theme["style"] = _pick_style(cfg["category"], cfg["id"])
+
     return {
         "id": cfg["id"],
         "name": cfg["name"],
@@ -1068,7 +1130,7 @@ def _build_template(cfg, category_key, sections):
         "segment": category_key,  # "hotel" | "restaurant" | "agency"
         "description": cfg["description"],
         "thumbnail": thumb,
-        "theme": cfg["theme"],
+        "theme": theme,
         "sections": sections,
         "is_custom": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
