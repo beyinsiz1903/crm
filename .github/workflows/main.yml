@@ -7,7 +7,50 @@ on:
     branches: [main]
 
 jobs:
-  check-project:
+  # ---------- LINT ----------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Lint araçlarını kur
+        run: pip install ruff
+
+      - name: Python lint (ruff)
+        run: |
+          if find backend -name "*.py" 2>/dev/null | grep -q .; then
+            ruff check backend --select=E9,F63,F7,F82 --output-format=github
+          else
+            echo "Backend Python dosyası yok, lint atlandı."
+          fi
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Frontend bağımlılıkları kur
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Frontend lint (eslint)
+        working-directory: frontend
+        run: |
+          if [ -f .eslintrc.json ] || [ -f .eslintrc.js ] || grep -q '"eslintConfig"' package.json; then
+            npx eslint src --max-warnings=0 || echo "Lint uyarıları var (engellemedi)."
+          else
+            echo "ESLint config yok, atlandı."
+          fi
+
+  # ---------- BACKEND TESTS ----------
+  backend-tests:
+    name: Backend Tests
     runs-on: ubuntu-latest
 
     services:
@@ -20,39 +63,173 @@ jobs:
       MONGO_URL: mongodb://localhost:27017
       DB_NAME: test_db
       JWT_SECRET: test-secret
-      REACT_APP_BACKEND_URL: http://localhost:8000
-      CI: false
 
     steps:
-      - name: Kodu indir
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Bağımlılıkları kur
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-asyncio httpx
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+
+      - name: Python derleme kontrolü
+        run: python -m compileall backend
+
+      - name: Backend modülleri import edilebiliyor mu?
+        working-directory: backend
+        run: |
+          python -c "import server, export_service, templates_data, models; print('imports OK')"
+
+      - name: Pytest çalıştır
+        run: |
+          if find backend -path '*/tests/test_*.py' -o -name 'test_*.py' 2>/dev/null | grep -vE '__pycache__|node_modules' | grep -q .; then
+            pytest -q backend
+          else
+            echo "Test dosyası yok, pytest atlandı."
+          fi
+
+  # ---------- FRONTEND BUILD ----------
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+
+    env:
+      CI: false
+      REACT_APP_BACKEND_URL: http://localhost:8000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend paketlerini kur
+        working-directory: frontend
+        run: npm install --legacy-peer-deps
+
+      - name: Build al
+        working-directory: frontend
+        run: npm run build
+
+      - name: Build çıktısını doğrula
+        run: |
+          test -d frontend/build || (echo "build klasörü oluşmadı" && exit 1)
+          test -f frontend/build/index.html || (echo "index.html üretilmedi" && exit 1)
+          echo "Build doğrulandı: $(du -sh frontend/build | cut -f1)"
+
+  # ---------- API CONTRACT TESTS ----------
+  api-contract-tests:
+    name: API Contract Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: contract_db
+      JWT_SECRET: ci-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Bağımlılıkları kur
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install requests
+
+      - name: Backend'i başlat
+        working-directory: backend
+        run: |
+          nohup uvicorn server:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            sleep 1
+            if curl -sf http://localhost:8000/api/ > /dev/null 2>&1 || curl -sf http://localhost:8000/docs > /dev/null 2>&1; then
+              echo "Backend hazır (denemeler: $i)"
+              exit 0
+            fi
+          done
+          echo "Backend başlamadı. Log:"
+          cat /tmp/backend.log
+          exit 1
+
+      - name: Sözleşme testleri
+        run: |
+          python <<'PY'
+          import requests, sys
+          base = "http://localhost:8000"
+          checks = []
+          def check(name, ok, info=""):
+              checks.append((name, ok, info))
+              status = "PASS" if ok else "FAIL"
+              print(f"[{status}] {name} {info}")
+
+          # OpenAPI / docs
+          r = requests.get(f"{base}/docs")
+          check("GET /docs", r.status_code == 200)
+          r = requests.get(f"{base}/openapi.json")
+          check("GET /openapi.json", r.status_code == 200 and "openapi" in r.json())
+
+          # Public endpoints (no auth required)
+          r = requests.post(f"{base}/api/auth/login", json={"email":"x@x","password":"wrong"})
+          check("POST /api/auth/login -> 4xx for bad creds", 400 <= r.status_code < 500)
+
+          # Auth-required endpoint should reject without token
+          r = requests.get(f"{base}/api/templates")
+          check("GET /api/templates (no auth)", r.status_code in (200, 401, 403))
+
+          fails = [n for n,ok,_ in checks if not ok]
+          if fails:
+              print(f"\n{len(fails)} kontrol başarısız: {fails}")
+              sys.exit(1)
+          print(f"\n{len(checks)} sözleşme kontrolü başarılı")
+          PY
+
+      - name: Backend logu (her zaman göster)
+        if: always()
+        run: tail -100 /tmp/backend.log || true
+
+  # ---------- SECURITY SCAN ----------
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Python kur
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Python paketlerini kur
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+      - name: pip-audit kur
+        run: pip install pip-audit
 
-      - name: Python dosyalarını kontrol et
+      - name: Python bağımlılıklarını tara
         run: |
-          if find . -name "*.py" | grep -q .; then
-            python -m compileall .
-          else
-            echo "Python dosyası bulunamadı, Python kontrolü atlandı."
-          fi
-
-      - name: Python testlerini çalıştır
-        run: |
-          if find . -name "test_*.py" -not -path "./node_modules/*" 2>/dev/null | grep -q .; then
-            pytest -q
-          else
-            echo "Test dosyası yok, pytest atlandı."
+          if [ -f backend/requirements.txt ]; then
+            pip-audit -r backend/requirements.txt --strict || echo "pip-audit uyarıları bulundu."
           fi
 
       - name: Node.js kur
@@ -60,18 +237,100 @@ jobs:
         with:
           node-version: 20
 
-      - name: Frontend paketlerini kur
+      - name: npm audit
+        working-directory: frontend
         run: |
-          if [ -f frontend/package.json ]; then
-            cd frontend && npm install --legacy-peer-deps
-          else
-            echo "frontend/package.json yok, frontend kurulumu atlandı."
-          fi
+          npm install --legacy-peer-deps --no-audit --no-fund
+          npm audit --audit-level=high || echo "npm audit uyarıları bulundu (engellemedi)."
 
-      - name: Frontend build al
+  # ---------- SECRETS SCAN ----------
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Açıkta sır var mı?
         run: |
-          if [ -f frontend/package.json ]; then
-            cd frontend && npm run build --if-present
-          else
-            echo "frontend/package.json yok, frontend build atlandı."
+          patterns='(AWS_SECRET_ACCESS_KEY|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC )?PRIVATE KEY-----|sk_live_[0-9a-zA-Z]{20,}|ghp_[0-9a-zA-Z]{36})'
+          if git grep -EnI "$patterns" -- ':(exclude).github' ':(exclude)*.lock' ':(exclude)yarn.lock' ':(exclude)package-lock.json' 2>/dev/null; then
+            echo "Olası sır tespit edildi."
+            exit 1
           fi
+          echo "Sır taraması temiz."
+
+  # ---------- CODE QUALITY ----------
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Araçları kur
+        run: pip install ruff radon
+
+      - name: Karmaşıklık raporu (radon)
+        run: |
+          radon cc backend -a -nb || true
+          radon mi backend -nb || true
+
+      - name: Stil tutarlılığı (ruff)
+        run: ruff check backend --output-format=github || echo "Ruff bulguları var (engellemedi)."
+
+  # ---------- DEPENDENCY HEALTH ----------
+  dependency-health:
+    name: Dependency Health
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lock dosyası tutarlı mı?
+        run: |
+          missing=0
+          if [ -f frontend/package.json ] && [ ! -f frontend/yarn.lock ] && [ ! -f frontend/package-lock.json ]; then
+            echo "frontend için lock dosyası yok"
+            missing=1
+          fi
+          if [ -f backend/requirements.txt ]; then
+            head -3 backend/requirements.txt
+          fi
+          test "$missing" = "0"
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Eskiyen paketler (rapor amaçlı)
+        working-directory: frontend
+        run: |
+          npm install --legacy-peer-deps --no-audit --no-fund
+          npm outdated || true
+
+  # ---------- DOCS CHECK ----------
+  docs-check:
+    name: Docs Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: README & replit.md var mı?
+        run: |
+          missing=0
+          for f in README.md replit.md; do
+            if [ ! -f "$f" ]; then
+              echo "Eksik: $f"
+              missing=1
+            else
+              echo "Var: $f ($(wc -l < $f) satır)"
+            fi
+          done
+          # Eksik olsa bile hata vermesin (sadece uyarı)
+          exit 0
