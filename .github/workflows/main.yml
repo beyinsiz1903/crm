@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-project:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: test_db
+      JWT_SECRET: test-secret
+      REACT_APP_BACKEND_URL: http://localhost:8000
+      CI: false
+
+    steps:
+      - name: Kodu indir
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python paketlerini kur
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+
+      - name: Python dosyalarını kontrol et
+        run: |
+          if find . -name "*.py" | grep -q .; then
+            python -m compileall .
+          else
+            echo "Python dosyası bulunamadı, Python kontrolü atlandı."
+          fi
+
+      - name: Python testlerini çalıştır
+        run: |
+          if [ -d tests ]; then
+            pytest -q
+          else
+            echo "tests klasörü yok, test atlandı."
+          fi
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Root frontend paketlerini kur
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "Ana dizinde package.json yok, root npm kurulumu atlandı."
+          fi
+
+      - name: Root build al
+        run: |
+          if [ -f package.json ]; then
+            npm run build --if-present
+          else
+            echo "Ana dizinde package.json yok, root build atlandı."
+          fi
+
+      - name: Frontend paketlerini kur
+        run: |
+          if [ -f frontend/package-lock.json ]; then
+            cd frontend && npm ci
+          elif [ -f frontend/package.json ]; then
+            cd frontend && npm install
+          else
+            echo "frontend/package.json yok, frontend kurulumu atlandı."
+          fi
+
+      - name: Frontend build al
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend && npm run build --if-present
+          else
+            echo "frontend/package.json yok, frontend build atlandı."
+          fi
