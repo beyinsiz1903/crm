@@ -37,7 +37,7 @@ jobs:
 
       - name: Frontend bağımlılıkları kur
         working-directory: frontend
-        run: npm install --legacy-peer-deps
+        run: yarn install --frozen-lockfile --network-timeout 600000
 
       - name: Frontend lint (eslint)
         working-directory: frontend
@@ -111,16 +111,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
 
       - name: Frontend paketlerini kur
         working-directory: frontend
-        run: npm install --legacy-peer-deps
+        run: yarn install --frozen-lockfile --network-timeout 600000
 
       - name: Build al
         working-directory: frontend
-        run: npm run build
+        run: yarn build
 
       - name: Build çıktısını doğrula
         run: |
@@ -237,11 +237,11 @@ jobs:
         with:
           node-version: 20
 
-      - name: npm audit
+      - name: yarn audit
         working-directory: frontend
         run: |
-          npm install --legacy-peer-deps --no-audit --no-fund
-          npm audit --audit-level=high || echo "npm audit uyarıları bulundu (engellemedi)."
+          yarn install --frozen-lockfile --network-timeout 600000
+          yarn audit --level high || echo "yarn audit uyarıları bulundu (engellemedi)."
 
   # ---------- SECRETS SCAN ----------
   secrets-scan:
@@ -254,8 +254,14 @@ jobs:
 
       - name: Açıkta sır var mı?
         run: |
-          patterns='(AWS_SECRET_ACCESS_KEY|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC )?PRIVATE KEY-----|sk_live_[0-9a-zA-Z]{20,}|ghp_[0-9a-zA-Z]{36})'
-          if git grep -EnI "$patterns" -- ':(exclude).github' ':(exclude)*.lock' ':(exclude)yarn.lock' ':(exclude)package-lock.json' 2>/dev/null; then
+          # Desenler parçalı kuruluyor — bu workflow dosyasının kendisi tetiklenmesin diye
+          p_aws="AWS_SECRET""_ACCESS_KEY"
+          p_akia="AK""IA[0-9A-Z]{16}"
+          p_priv="-----BEGI""N (RSA |EC )?PRIVATE KEY-----"
+          p_stripe="sk""_live_[0-9a-zA-Z]{20,}"
+          p_ghp="gh""p_[0-9a-zA-Z]{36}"
+          patterns="(${p_aws}|${p_akia}|${p_priv}|${p_stripe}|${p_ghp})"
+          if git grep -EnI "$patterns" -- ':(exclude).github' ':(exclude)ci-workflow-new.yml' ':(exclude)*.lock' ':(exclude)yarn.lock' ':(exclude)package-lock.json' 2>/dev/null; then
             echo "Olası sır tespit edildi."
             exit 1
           fi
@@ -311,8 +317,8 @@ jobs:
       - name: Eskiyen paketler (rapor amaçlı)
         working-directory: frontend
         run: |
-          npm install --legacy-peer-deps --no-audit --no-fund
-          npm outdated || true
+          yarn install --frozen-lockfile --network-timeout 600000
+          yarn outdated || true
 
   # ---------- DOCS CHECK ----------
   docs-check:
