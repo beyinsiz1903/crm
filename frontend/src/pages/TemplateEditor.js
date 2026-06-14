@@ -1182,7 +1182,66 @@ function SectionForm({ section, onUpdate, deviceMode }) {
     case "tours":
       return (<div className="space-y-3"><Field label="Baslik" prop="title" /><Field label="Alt Baslik" prop="subtitle" />{(props.tours || []).map((tour, i) => (<div key={i} className="p-3 bg-muted/30 rounded-lg space-y-2"><p className="text-xs font-medium text-muted-foreground">Tur {i + 1}</p><Input value={tour.name || ""} onChange={(e) => { const tours = [...(props.tours || [])]; tours[i] = { ...tours[i], name: e.target.value }; onUpdate("tours", tours); }} placeholder="Tur Adi" className="h-8 text-sm" /><Textarea value={tour.description || ""} onChange={(e) => { const tours = [...(props.tours || [])]; tours[i] = { ...tours[i], description: e.target.value }; onUpdate("tours", tours); }} placeholder="Aciklama" className="text-sm min-h-[50px]" /><ImageUpload value={tour.image || ""} onChange={(v) => { const tours = [...(props.tours || [])]; tours[i] = { ...tours[i], image: v }; onUpdate("tours", tours); }} label="Gorsel" /><div className="grid grid-cols-2 gap-2"><Input value={tour.price || ""} onChange={(e) => { const tours = [...(props.tours || [])]; tours[i] = { ...tours[i], price: e.target.value }; onUpdate("tours", tours); }} placeholder="Fiyat" className="h-8 text-sm" /><Input value={tour.duration || ""} onChange={(e) => { const tours = [...(props.tours || [])]; tours[i] = { ...tours[i], duration: e.target.value }; onUpdate("tours", tours); }} placeholder="Sure" className="h-8 text-sm" /></div></div>))}<Button variant="outline" size="sm" onClick={() => { const tours = [...(props.tours || []), { name: "", description: "", image: "", price: "", duration: "" }]; onUpdate("tours", tours); }}><Plus className="w-3 h-3 mr-1" />Yeni Tur Ekle</Button>{responsiveHint}</div>);
     case "gallery":
-      return (<div className="space-y-3"><Field label="Baslik" prop="title" /><LayoutSelect prop="layout" options={[{ value: "grid", label: "Grid" }, { value: "masonry", label: "Masonry" }]} />{(props.images || []).map((img, i) => (<ImageUpload key={i} value={img.url || ""} onChange={(v) => { const images = [...(props.images || [])]; images[i] = { ...images[i], url: v }; onUpdate("images", images); }} label={`Gorsel ${i + 1}`} testId={`editor-gallery-${i}-url`} />))}{responsiveHint}</div>);
+      return (
+        <div className="space-y-3">
+          <Field label="Baslik" prop="title" />
+          <LayoutSelect prop="layout" options={[{ value: "grid", label: "Grid" }, { value: "masonry", label: "Masonry" }]} />
+          <div className="space-y-2">
+            {(props.images || []).map((img, i) => (
+              <div key={i} className="p-3 bg-muted/30 rounded-lg space-y-2 border border-border/40">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-muted-foreground">Görsel {i + 1}</p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => {
+                      const images = (props.images || []).filter((_, idx) => idx !== i);
+                      onUpdate("images", images);
+                    }}
+                    title="Görseli Sil"
+                  >
+                    <Trash2 size={12} />
+                  </Button>
+                </div>
+                <ImageUpload
+                  value={img.url || ""}
+                  onChange={(v) => {
+                    const images = [...(props.images || [])];
+                    images[i] = { ...images[i], url: v };
+                    onUpdate("images", images);
+                  }}
+                  label="Görsel (URL veya dosya yükle)"
+                  testId={`editor-gallery-${i}-url`}
+                />
+                <Input
+                  value={img.alt || ""}
+                  onChange={(e) => {
+                    const images = [...(props.images || [])];
+                    images[i] = { ...images[i], alt: e.target.value };
+                    onUpdate("images", images);
+                  }}
+                  placeholder="Alt metin (SEO için açıklama)"
+                  className="h-8 text-sm"
+                />
+              </div>
+            ))}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              const images = [...(props.images || []), { url: "", alt: "" }];
+              onUpdate("images", images);
+            }}
+          >
+            <Plus className="w-3 h-3 mr-1" />
+            Yeni Görsel Ekle
+          </Button>
+          {responsiveHint}
+        </div>
+      );
     case "services":
       return (<div className="space-y-3"><Field label="Baslik" prop="title" />{(props.services || []).map((svc, i) => (<div key={i} className="p-3 bg-muted/30 rounded-lg space-y-2"><Input value={svc.name || ""} onChange={(e) => { const services = [...(props.services || [])]; services[i] = { ...services[i], name: e.target.value }; onUpdate("services", services); }} placeholder="Hizmet Adi" className="h-8 text-sm" /><Textarea value={svc.description || ""} onChange={(e) => { const services = [...(props.services || [])]; services[i] = { ...services[i], description: e.target.value }; onUpdate("services", services); }} placeholder="Aciklama" className="text-sm min-h-[50px]" /></div>))}</div>);
     case "testimonials":
