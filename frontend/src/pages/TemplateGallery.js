@@ -18,6 +18,27 @@ const SEGMENTS = [
   { value: "agency", label: "Acente" },
 ];
 
+const STYLE_LABELS = {
+  "classic":       { label: "Klasik",        color: "bg-slate-500/80" },
+  "minimal":       { label: "Minimal",        color: "bg-zinc-500/80" },
+  "luxury-dark":   { label: "Lüks Koyu",      color: "bg-yellow-700/80" },
+  "rustic":        { label: "Rustik",          color: "bg-amber-700/80" },
+  "bold-modern":   { label: "Bold Modern",     color: "bg-red-600/80" },
+  "magazine":      { label: "Dergi",           color: "bg-blue-600/80" },
+  "neon-cyber":    { label: "Neon Cyber",      color: "bg-purple-600/80" },
+  "glassmorphism": { label: "Glassmorphism",   color: "bg-cyan-600/80" },
+  "geometric":     { label: "Geometrik",       color: "bg-orange-600/80" },
+  "full-photo":    { label: "Full Fotoğraf",   color: "bg-green-700/80" },
+  "mosaic":        { label: "Mozaik",          color: "bg-pink-600/80" },
+  "retro-film":    { label: "Retro Film",      color: "bg-stone-600/80" },
+  "depth-3d":      { label: "3D Derinlik",     color: "bg-indigo-600/80" },
+};
+
+const ALL_STYLES = [
+  { value: "all", label: "Tüm Stiller" },
+  ...Object.entries(STYLE_LABELS).map(([v, s]) => ({ value: v, label: s.label })),
+];
+
 const CATEGORIES_BY_SEGMENT = {
   all: [{ value: "all", label: "Tum Kategoriler" }],
   hotel: [
@@ -64,12 +85,14 @@ export default function TemplateGallery() {
   const [loading, setLoading] = useState(true);
   const [segment, setSegment] = useState("all");
   const [category, setCategory] = useState("all");
+  const [styleFilter, setStyleFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [previewTemplate, setPreviewTemplate] = useState(null);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     setCategory("all");
+    setStyleFilter("all");
   }, [segment]);
 
   useEffect(() => {
@@ -82,9 +105,11 @@ export default function TemplateGallery() {
 
   const currentCategories = CATEGORIES_BY_SEGMENT[segment] || CATEGORIES_BY_SEGMENT.all;
 
-  const filtered = templates.filter((t) =>
-    !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = templates.filter((t) => {
+    const matchSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase());
+    const matchStyle = styleFilter === "all" || (t.theme?.style || "") === styleFilter;
+    return matchSearch && matchStyle;
+  });
 
   const handleUseTemplate = async (template) => {
     setCreating(true);
@@ -150,6 +175,23 @@ export default function TemplateGallery() {
             ))}
           </div>
         )}
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs text-muted-foreground font-medium mr-1">Stil:</span>
+          {ALL_STYLES.map((s) => (
+            <Button
+              key={s.value}
+              variant={styleFilter === s.value ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setStyleFilter(s.value)}
+              className="text-xs h-7"
+            >
+              {s.value !== "all" && (
+                <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${STYLE_LABELS[s.value]?.color || "bg-gray-500"}`} />
+              )}
+              {s.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Templates Grid */}
@@ -201,9 +243,16 @@ export default function TemplateGallery() {
                       <ArrowRight size={14} className="mr-1" /> Kullan
                     </Button>
                   </div>
-                  <Badge className="absolute top-3 left-3 text-[10px] bg-background/80 backdrop-blur-sm">
-                    {(CATEGORIES_BY_SEGMENT[template.segment] || CATEGORIES_BY_SEGMENT.all).find((c) => c.value === template.category)?.label || template.category}
-                  </Badge>
+                  <div className="absolute top-3 left-3 flex flex-col gap-1">
+                    <Badge className="text-[10px] bg-background/80 backdrop-blur-sm text-foreground w-fit">
+                      {(CATEGORIES_BY_SEGMENT[template.segment] || CATEGORIES_BY_SEGMENT.all).find((c) => c.value === template.category)?.label || template.category}
+                    </Badge>
+                    {template.theme?.style && (
+                      <Badge className={`text-[10px] text-white w-fit border-0 ${STYLE_LABELS[template.theme.style]?.color || "bg-gray-600/80"}`}>
+                        {STYLE_LABELS[template.theme.style]?.label || template.theme.style}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <CardContent className="p-4">
                   <h3 className="font-semibold text-sm mb-1">{template.name}</h3>
