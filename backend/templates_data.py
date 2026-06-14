@@ -1054,50 +1054,53 @@ AGENCY_CONFIGS = [
 
 # Distinct visual design styles. Each produces dramatically different CSS treatment
 # (typography, button shapes, card styles, spacing, color application).
-DESIGN_STYLES = ["classic", "minimal", "luxury-dark", "rustic", "bold-modern", "magazine"]
+DESIGN_STYLES = [
+    "classic", "minimal", "luxury-dark", "rustic", "bold-modern", "magazine",
+    "neon-cyber", "glassmorphism", "geometric", "full-photo", "mosaic", "retro-film",
+]
 
 # Default style by category - gives each category a coherent visual identity.
 # Templates within the same category get rotated through 2-3 styles for variety.
 _CATEGORY_STYLE_POOLS = {
-    # hotel
-    "luxury": ["luxury-dark", "classic", "magazine"],
-    "boutique": ["magazine", "minimal", "rustic"],
-    "resort": ["classic", "rustic", "bold-modern"],
-    "beach": ["minimal", "bold-modern", "classic"],
-    "mountain": ["rustic", "luxury-dark", "classic"],
-    "city": ["bold-modern", "minimal", "luxury-dark"],
-    "business": ["minimal", "bold-modern"],
-    "design": ["bold-modern", "minimal", "luxury-dark"],
+    # hotel — 12 styles distributed across categories
+    "luxury":    ["luxury-dark", "glassmorphism", "full-photo"],
+    "boutique":  ["magazine", "retro-film", "glassmorphism"],
+    "resort":    ["full-photo", "classic", "mosaic"],
+    "beach":     ["glassmorphism", "full-photo", "minimal"],
+    "mountain":  ["rustic", "retro-film", "full-photo"],
+    "city":      ["neon-cyber", "geometric", "bold-modern"],
+    "business":  ["minimal", "geometric", "bold-modern"],
+    "design":    ["geometric", "neon-cyber", "glassmorphism"],
     # restaurant
-    "mediterranean": ["rustic", "classic", "minimal"],
-    "italian": ["magazine", "rustic", "classic"],
-    "turkish": ["rustic", "classic", "magazine"],
-    "vintage": ["magazine", "classic", "rustic"],
-    "steakhouse": ["luxury-dark", "bold-modern", "magazine"],
-    "cafe": ["minimal", "magazine", "rustic"],
-    "seafood": ["minimal", "classic", "luxury-dark"],
-    "vegan": ["minimal", "rustic", "magazine"],
-    "asian": ["minimal", "luxury-dark", "magazine"],
-    "japanese": ["minimal", "luxury-dark"],
-    "indian": ["luxury-dark", "rustic", "bold-modern"],
-    "mexican": ["bold-modern", "rustic"],
-    "french": ["luxury-dark", "magazine", "classic"],
-    "fusion": ["bold-modern", "magazine", "minimal"],
-    "fastfood": ["bold-modern", "minimal"],
-    "brunch": ["minimal", "magazine", "rustic"],
-    "patisserie": ["magazine", "minimal", "rustic"],
+    "mediterranean": ["rustic", "full-photo", "mosaic"],
+    "italian":       ["retro-film", "magazine", "full-photo"],
+    "turkish":       ["mosaic", "rustic", "retro-film"],
+    "vintage":       ["retro-film", "magazine", "rustic"],
+    "steakhouse":    ["luxury-dark", "geometric", "bold-modern"],
+    "cafe":          ["glassmorphism", "minimal", "retro-film"],
+    "seafood":       ["full-photo", "glassmorphism", "minimal"],
+    "vegan":         ["glassmorphism", "minimal", "full-photo"],
+    "asian":         ["neon-cyber", "luxury-dark", "geometric"],
+    "japanese":      ["minimal", "neon-cyber", "full-photo"],
+    "indian":        ["mosaic", "bold-modern", "retro-film"],
+    "mexican":       ["bold-modern", "mosaic", "geometric"],
+    "french":        ["luxury-dark", "retro-film", "magazine"],
+    "fusion":        ["neon-cyber", "geometric", "glassmorphism"],
+    "fastfood":      ["bold-modern", "mosaic"],
+    "brunch":        ["glassmorphism", "magazine", "retro-film"],
+    "patisserie":    ["retro-film", "glassmorphism", "magazine"],
     # agency
-    "international": ["bold-modern", "magazine", "classic"],
-    "domestic": ["classic", "rustic", "magazine"],
-    "cultural": ["magazine", "classic", "luxury-dark"],
-    "adventure": ["bold-modern", "rustic", "minimal"],
-    "luxury-travel": ["luxury-dark", "magazine", "classic"],
-    "honeymoon": ["magazine", "classic", "luxury-dark"],
-    "corporate": ["minimal", "bold-modern"],
-    "religious": ["classic", "luxury-dark", "magazine"],
-    "ski": ["minimal", "bold-modern", "rustic"],
-    "cruise": ["luxury-dark", "classic", "minimal"],
-    "safari": ["rustic", "bold-modern", "magazine"],
+    "international": ["geometric", "bold-modern", "full-photo"],
+    "domestic":      ["full-photo", "rustic", "mosaic"],
+    "cultural":      ["retro-film", "magazine", "mosaic"],
+    "adventure":     ["geometric", "mosaic", "bold-modern"],
+    "luxury-travel": ["luxury-dark", "glassmorphism", "full-photo"],
+    "honeymoon":     ["glassmorphism", "full-photo", "magazine"],
+    "corporate":     ["minimal", "geometric", "bold-modern"],
+    "religious":     ["retro-film", "classic", "magazine"],
+    "ski":           ["bold-modern", "geometric", "full-photo"],
+    "cruise":        ["luxury-dark", "glassmorphism", "full-photo"],
+    "safari":        ["mosaic", "rustic", "full-photo"],
 }
 
 
