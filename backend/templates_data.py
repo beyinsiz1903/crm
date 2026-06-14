@@ -1057,20 +1057,21 @@ AGENCY_CONFIGS = [
 DESIGN_STYLES = [
     "classic", "minimal", "luxury-dark", "rustic", "bold-modern", "magazine",
     "neon-cyber", "glassmorphism", "geometric", "full-photo", "mosaic", "retro-film",
+    "depth-3d",
 ]
 
 # Default style by category - gives each category a coherent visual identity.
 # Templates within the same category get rotated through 2-3 styles for variety.
 _CATEGORY_STYLE_POOLS = {
     # hotel — 12 styles distributed across categories
-    "luxury":    ["luxury-dark", "glassmorphism", "full-photo"],
-    "boutique":  ["magazine", "retro-film", "glassmorphism"],
-    "resort":    ["full-photo", "classic", "mosaic"],
-    "beach":     ["glassmorphism", "full-photo", "minimal"],
-    "mountain":  ["rustic", "retro-film", "full-photo"],
-    "city":      ["neon-cyber", "geometric", "bold-modern"],
-    "business":  ["minimal", "geometric", "bold-modern"],
-    "design":    ["geometric", "neon-cyber", "glassmorphism"],
+    "luxury":    ["luxury-dark", "glassmorphism", "depth-3d"],
+    "boutique":  ["magazine", "retro-film", "depth-3d"],
+    "resort":    ["full-photo", "depth-3d", "mosaic"],
+    "beach":     ["glassmorphism", "full-photo", "depth-3d"],
+    "mountain":  ["rustic", "retro-film", "depth-3d"],
+    "city":      ["neon-cyber", "geometric", "depth-3d"],
+    "business":  ["minimal", "geometric", "depth-3d"],
+    "design":    ["geometric", "neon-cyber", "depth-3d"],
     # restaurant
     "mediterranean": ["rustic", "full-photo", "mosaic"],
     "italian":       ["retro-film", "magazine", "full-photo"],

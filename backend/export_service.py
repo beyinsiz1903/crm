@@ -214,6 +214,38 @@ def render_star_svg() -> str:
 
 
 _STYLE_OVERRIDES_RAW = {
+    "depth-3d": """
+    body{background:__BG__;font-family:__BF__;perspective:1200px}
+    .section{padding:110px 0;overflow:hidden}
+    .section:nth-of-type(even){background:__SC__06}
+    .section-title{font-weight:900;font-size:clamp(2rem,4.5vw,4rem);letter-spacing:-0.03em;color:__SC__;transform:perspective(600px) rotateX(4deg);transform-origin:left bottom;display:inline-block}
+    .section-title::after{content:"";display:block;width:70px;height:5px;background:linear-gradient(90deg,__PC__,__PC__44);margin-top:14px}
+    .section-subtitle{font-size:1.05rem;opacity:0.65;margin-bottom:56px}
+    .btn{background:__PC__;color:#fff;border-radius:6px;padding:14px 44px;font-weight:700;letter-spacing:0.04em;transform:perspective(400px) translateZ(0);transition:transform 0.2s,box-shadow 0.2s,background 0.2s;border:none}
+    .btn:hover{transform:perspective(400px) translateZ(12px) translateY(-3px);box-shadow:0 16px 40px __PC__60;background:__SC__}
+    .rooms-grid,.services-grid,.testimonials-grid{perspective:1400px}
+    .room-card,.service-card,.testimonial-card{transform:perspective(900px) rotateY(0deg) translateZ(0);transform-style:preserve-3d;transition:transform 0.4s cubic-bezier(0.23,1,0.32,1),box-shadow 0.4s;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.1);background:#fff;border:none}
+    .room-card:hover{transform:perspective(900px) rotateY(-6deg) translateZ(24px);box-shadow:-12px 24px 48px rgba(0,0,0,0.18)}
+    .service-card:hover{transform:perspective(900px) rotateX(-6deg) translateZ(20px);box-shadow:0 24px 48px rgba(0,0,0,0.16)}
+    .testimonial-card:hover{transform:perspective(900px) rotateY(4deg) translateZ(16px);box-shadow:8px 20px 40px rgba(0,0,0,0.14)}
+    .room-card img{border-radius:10px 10px 0 0;transition:transform 0.4s}
+    .room-card:hover img{transform:scale(1.04)}
+    .room-price{color:__PC__;font-size:1.5rem;font-weight:900}
+    .room-features span{background:__PC__15;color:__SC__;border-radius:6px;font-weight:500}
+    .gallery-grid{perspective:1200px;display:grid}
+    .gallery-item{transition:transform 0.4s,box-shadow 0.4s;border-radius:8px}
+    .gallery-item:nth-child(odd){transform:perspective(800px) rotateY(-3deg)}
+    .gallery-item:nth-child(even){transform:perspective(800px) rotateY(3deg)}
+    .gallery-item:hover{transform:perspective(800px) rotateY(0deg) translateZ(20px) scale(1.06);box-shadow:0 20px 48px rgba(0,0,0,0.22);z-index:2;position:relative}
+    .site-header.solid,.site-header{background:rgba(255,255,255,0.94);backdrop-filter:blur(12px);border-bottom:1px solid __PC__20;box-shadow:0 2px 20px rgba(0,0,0,0.08)}
+    .site-header .logo{font-weight:900;letter-spacing:-0.01em;color:__SC__}
+    .hero{min-height:95vh}
+    .hero-content{text-shadow:0 4px 24px rgba(0,0,0,0.3)}
+    .hero-overlay{background:linear-gradient(160deg,rgba(0,0,0,0.25),rgba(0,0,0,0.65))}
+    .hero h1{font-weight:900;letter-spacing:-0.04em;transform:perspective(600px) rotateX(3deg);display:inline-block;text-shadow:0 8px 32px rgba(0,0,0,0.4)}
+    .contact-form input,.contact-form textarea{border-radius:8px;transition:transform 0.2s,box-shadow 0.2s}
+    .contact-form input:focus,.contact-form textarea:focus{transform:perspective(600px) translateZ(6px);box-shadow:0 8px 24px __PC__30;border-color:__PC__}
+    """,
     "neon-cyber": """
     body{background:#07071a;color:#c8d6e5}
     h1,h2,h3,h4{color:#ffffff;text-shadow:0 0 20px __PC__80}

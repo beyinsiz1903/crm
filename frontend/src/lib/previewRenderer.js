@@ -13,6 +13,39 @@ const SERVICE_ICONS = {
 const STAR_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
 
 const STYLE_OVERRIDES = {
+  "depth-3d": (pc, sc, bg, tc, hf, bf) => `
+    body{background:${bg};font-family:${bf};perspective:1200px}
+    .section{padding:110px 0;overflow:hidden}
+    .section:nth-of-type(even){background:${sc}06}
+    .section-title{font-weight:900;font-size:clamp(2rem,4.5vw,4rem);letter-spacing:-0.03em;color:${sc};transform:perspective(600px) rotateX(4deg);transform-origin:left bottom;display:inline-block}
+    .section-title::after{content:"";display:block;width:70px;height:5px;background:linear-gradient(90deg,${pc},${pc}44);margin-top:14px;transform:scaleX(1);transform-origin:left;transition:transform 0.3s}
+    .section-subtitle{font-size:1.05rem;opacity:0.65;margin-bottom:56px}
+    .btn{background:${pc};color:#fff;border-radius:6px;padding:14px 44px;font-weight:700;letter-spacing:0.04em;transform:perspective(400px) translateZ(0);transition:transform 0.2s,box-shadow 0.2s,background 0.2s;border:none}
+    .btn:hover{transform:perspective(400px) translateZ(12px) translateY(-3px);box-shadow:0 16px 40px ${pc}60;background:${sc}}
+    .rooms-grid,.services-grid,.testimonials-grid{perspective:1400px}
+    .room-card,.service-card,.testimonial-card{transform:perspective(900px) rotateY(0deg) translateZ(0);transform-style:preserve-3d;transition:transform 0.4s cubic-bezier(0.23,1,0.32,1),box-shadow 0.4s;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.1);background:#fff;border:none}
+    .room-card:hover{transform:perspective(900px) rotateY(-6deg) translateZ(24px);box-shadow:-12px 24px 48px rgba(0,0,0,0.18)}
+    .service-card:hover{transform:perspective(900px) rotateX(-6deg) translateZ(20px);box-shadow:0 24px 48px rgba(0,0,0,0.16)}
+    .testimonial-card:hover{transform:perspective(900px) rotateY(4deg) translateZ(16px);box-shadow:8px 20px 40px rgba(0,0,0,0.14)}
+    .room-card img{border-radius:10px 10px 0 0;transition:transform 0.4s}
+    .room-card:hover img{transform:scale(1.04) translateZ(8px)}
+    .room-price{color:${pc};font-size:1.5rem;font-weight:900}
+    .room-features span{background:${pc}15;color:${sc};border-radius:6px;font-weight:500}
+    .gallery-grid{perspective:1200px;display:grid}
+    .gallery-item{transition:transform 0.4s,box-shadow 0.4s;border-radius:8px}
+    .gallery-item:nth-child(odd){transform:perspective(800px) rotateY(-3deg)}
+    .gallery-item:nth-child(even){transform:perspective(800px) rotateY(3deg)}
+    .gallery-item:hover{transform:perspective(800px) rotateY(0deg) translateZ(20px) scale(1.06);box-shadow:0 20px 48px rgba(0,0,0,0.22);z-index:2;position:relative}
+    .site-header.solid,.site-header{background:rgba(255,255,255,0.94);backdrop-filter:blur(12px);border-bottom:1px solid ${pc}20;box-shadow:0 2px 20px rgba(0,0,0,0.08)}
+    .site-header .logo{font-weight:900;letter-spacing:-0.01em;color:${sc}}
+    .hero{min-height:95vh;perspective:1200px}
+    .hero-content{transform:perspective(800px) translateZ(40px);text-shadow:0 4px 24px rgba(0,0,0,0.3)}
+    .hero-overlay{background:linear-gradient(160deg,rgba(0,0,0,0.25),rgba(0,0,0,0.65))}
+    .hero h1{font-weight:900;letter-spacing:-0.04em;transform:perspective(600px) rotateX(3deg) translateZ(20px);display:inline-block;text-shadow:0 8px 32px rgba(0,0,0,0.4)}
+    .hero p{transform:perspective(600px) rotateX(2deg) translateZ(10px);display:block;opacity:0.92}
+    .contact-form input,.contact-form textarea{border-radius:8px;transform:perspective(600px) translateZ(0);transition:transform 0.2s,box-shadow 0.2s}
+    .contact-form input:focus,.contact-form textarea:focus{transform:perspective(600px) translateZ(6px);box-shadow:0 8px 24px ${pc}30;border-color:${pc}}
+  `,
   "neon-cyber": (pc, sc, bg, tc, hf, bf) => `
     body{background:#07071a;color:#c8d6e5}
     h1,h2,h3,h4{color:#ffffff;text-shadow:0 0 20px ${pc}80}
