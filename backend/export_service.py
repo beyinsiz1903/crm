@@ -578,7 +578,7 @@ def generate_css(theme: Dict[str, Any]) -> str:
     style_css = _style_css(style_key, pc, sc, bg, tc, hf, bf)
     base = f"""
     *{{margin:0;padding:0;box-sizing:border-box}}
-    html{{scroll-behavior:smooth;scroll-padding-top:90px}}
+    html{{scroll-padding-top:90px}}
     body{{font-family:{bf};color:{tc};background:{bg};line-height:1.7}}
     h1,h2,h3,h4{{font-family:{hf};line-height:1.3}}
     img{{max-width:100%;height:auto}}
@@ -591,6 +591,9 @@ def generate_css(theme: Dict[str, Any]) -> str:
     .site-header .logo{{font-family:{hf};font-size:1.8rem;color:#fff;font-weight:700}}
     .site-header nav a{{color:#fff;margin-left:25px;font-size:0.95rem;font-weight:500;transition:opacity 0.2s}}
     .site-header nav a:hover{{opacity:0.8}}
+    .site-header nav a.nav-active{{opacity:1;font-weight:700;border-bottom:2px solid {pc}}}
+    .page-section{{display:none}}
+    .page-section.page-active{{display:block}}
     .hero{{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;overflow:hidden}}
     .hero-bg{{position:absolute;inset:0;background-size:cover;background-position:center}}
     .hero-overlay{{position:absolute;inset:0;background:rgba(0,0,0,0.5)}}
@@ -700,7 +703,7 @@ def render_hero(props, theme, lang="tr"):
     cta_link = props.get("ctaLink", "#")
     opacity = props.get("overlayOpacity", "0.5")
     cta_html = f'<a href="{cta_link}" class="btn">{cta_text}</a>' if cta_text else ""
-    return f'<section class="hero" id="anasayfa"><div class="hero-bg" style="background-image:url(\'{bg}\')"></div><div class="hero-overlay" style="opacity:{opacity}"></div><div class="hero-content"><h1>{title}</h1><p>{subtitle}</p>{cta_html}</div></section>'
+    return f'<section class="hero page-section page-active" id="anasayfa"><div class="hero-bg" style="background-image:url(\'{bg}\')"></div><div class="hero-overlay" style="opacity:{opacity}"></div><div class="hero-content"><h1>{title}</h1><p>{subtitle}</p>{cta_html}</div></section>'
 
 
 def render_about(props, theme, lang="tr"):
@@ -714,7 +717,7 @@ def render_about(props, theme, lang="tr"):
         inner = f'{text_html}<div>{img_html}</div>'
     else:
         inner = f'<div>{img_html}</div>{text_html}'
-    return f'<section class="section" id="hakkimizda"><div class="container"><div class="about-grid">{inner}</div></div></section>'
+    return f'<section class="section page-section" id="hakkimizda"><div class="container"><div class="about-grid">{inner}</div></div></section>'
 
 
 def render_rooms(props, theme, lang="tr"):
@@ -726,7 +729,7 @@ def render_rooms(props, theme, lang="tr"):
         features = room.get("features", [])
         features_html = "".join([f'<span>{f}</span>' for f in features])
         rooms_html += f'<div class="room-card"><img src="{room.get("image", "")}" alt="{room.get("name", "")}"><div class="room-card-body"><h3>{room.get("name", "")}</h3><p>{room.get("description", "")}</p><div class="room-price">{room.get("price", "")}</div><div class="room-features">{features_html}</div></div></div>'
-    return f'<section class="section" id="odalar"><div class="container"><h2 class="section-title">{title}</h2><p class="section-subtitle">{subtitle}</p><div class="rooms-grid">{rooms_html}</div></div></section>'
+    return f'<section class="section page-section" id="odalar"><div class="container"><h2 class="section-title">{title}</h2><p class="section-subtitle">{subtitle}</p><div class="rooms-grid">{rooms_html}</div></div></section>'
 
 
 def render_menu(props, theme, lang="tr"):
@@ -739,7 +742,7 @@ def render_menu(props, theme, lang="tr"):
         price_html = f'<div class="room-price">{price}</div>' if price else ""
         items_html += f'<div class="room-card"><img src="{item.get("image", "")}" alt="{item.get("name", "")}"><div class="room-card-body"><h3>{item.get("name", "")}</h3><p>{item.get("description", "")}</p>{price_html}</div></div>'
     sub_html = f'<p class="section-subtitle">{subtitle}</p>' if subtitle else ""
-    return f'<section class="section" id="menu"><div class="container"><h2 class="section-title">{title}</h2>{sub_html}<div class="rooms-grid">{items_html}</div></div></section>'
+    return f'<section class="section page-section" id="menu"><div class="container"><h2 class="section-title">{title}</h2>{sub_html}<div class="rooms-grid">{items_html}</div></div></section>'
 
 
 def render_tours(props, theme, lang="tr"):
@@ -756,7 +759,7 @@ def render_tours(props, theme, lang="tr"):
         price_html = f'<div class="room-price">{price}</div>' if price else ""
         items_html += f'<div class="room-card"><img src="{tour.get("image", "")}" alt="{tour.get("name", "")}"><div class="room-card-body"><h3>{tour.get("name", "")}</h3><p>{tour.get("description", "")}</p>{price_html}<div class="room-features">{features_html}</div></div></div>'
     sub_html = f'<p class="section-subtitle">{subtitle}</p>' if subtitle else ""
-    return f'<section class="section" id="turlar"><div class="container"><h2 class="section-title">{title}</h2>{sub_html}<div class="rooms-grid">{items_html}</div></div></section>'
+    return f'<section class="section page-section" id="turlar"><div class="container"><h2 class="section-title">{title}</h2>{sub_html}<div class="rooms-grid">{items_html}</div></div></section>'
 
 
 def render_gallery(props, theme, lang="tr"):
@@ -765,7 +768,7 @@ def render_gallery(props, theme, lang="tr"):
     layout = props.get("layout", "grid")
     grid_class = "masonry" if layout == "masonry" else ""
     images_html = "".join([f'<div class="gallery-item"><img src="{img.get("url", "")}" alt="{img.get("alt", "")}"></div>' for img in images])
-    return f'<section class="section" style="background:#f8f8f8" id="galeri"><div class="container"><h2 class="section-title">{title}</h2><div class="gallery-grid {grid_class}">{images_html}</div></div></section>'
+    return f'<section class="section page-section" style="background:#f8f8f8" id="galeri"><div class="container"><h2 class="section-title">{title}</h2><div class="gallery-grid {grid_class}">{images_html}</div></div></section>'
 
 
 def render_services(props, theme, lang="tr"):
@@ -775,7 +778,7 @@ def render_services(props, theme, lang="tr"):
     for svc in services:
         icon_svg = get_service_icon_svg(svc.get("icon", "spa"))
         svc_html += f'<div class="service-card"><div class="service-icon">{icon_svg}</div><h3>{svc.get("name", "")}</h3><p>{svc.get("description", "")}</p></div>'
-    return f'<section class="section" id="hizmetler"><div class="container"><h2 class="section-title">{title}</h2><div class="services-grid">{svc_html}</div></div></section>'
+    return f'<section class="section page-section" id="hizmetler"><div class="container"><h2 class="section-title">{title}</h2><div class="services-grid">{svc_html}</div></div></section>'
 
 
 def render_testimonials(props, theme, lang="tr"):
@@ -786,7 +789,7 @@ def render_testimonials(props, theme, lang="tr"):
         rating = t.get("rating", 5)
         stars = render_star_svg() * rating
         items_html += f'<div class="testimonial-card"><div class="testimonial-stars">{stars}</div><p>"{t.get("text", "")}"</p><div class="testimonial-author">{t.get("name", "")}</div></div>'
-    return f'<section class="section" style="background:#f8f8f8" id="yorumlar"><div class="container"><h2 class="section-title">{title}</h2><div class="testimonials-grid">{items_html}</div></div></section>'
+    return f'<section class="section page-section" style="background:#f8f8f8" id="yorumlar"><div class="container"><h2 class="section-title">{title}</h2><div class="testimonials-grid">{items_html}</div></div></section>'
 
 
 def render_contact(props, theme, lang="tr"):
@@ -796,7 +799,7 @@ def render_contact(props, theme, lang="tr"):
     email = props.get("email", "")
     pc = theme.get("primaryColor", "#C5A572")
     t = get_t(lang)
-    return f'<section class="section" id="iletisim"><div class="container"><h2 class="section-title">{title}</h2><div class="contact-grid"><div class="contact-info"><h3>{t["contact_info"]}</h3><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>{address}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>{phone}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>{email}</span></div></div><div class="contact-form"><input type="text" placeholder="{t["your_name"]}"><input type="email" placeholder="{t["your_email"]}"><input type="text" placeholder="{t["subject"]}"><textarea placeholder="{t["message"]}"></textarea><button class="btn">{t["send"]}</button></div></div></div></section>'
+    return f'<section class="section page-section" id="iletisim"><div class="container"><h2 class="section-title">{title}</h2><div class="contact-grid"><div class="contact-info"><h3>{t["contact_info"]}</h3><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>{address}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>{phone}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>{email}</span></div></div><div class="contact-form"><input type="text" placeholder="{t["your_name"]}"><input type="email" placeholder="{t["your_email"]}"><input type="text" placeholder="{t["subject"]}"><textarea placeholder="{t["message"]}"></textarea><button class="btn">{t["send"]}</button></div></div></div></section>'
 
 
 def render_banner(props, theme, lang="tr"):
@@ -822,7 +825,7 @@ def render_booking(props, theme, lang="tr"):
 
     # If external widget code is provided, render it
     if widget_code:
-        return f'<section class="booking-section section" id="rezervasyon"><div class="container"><h2 class="section-title">{title}</h2><p class="section-subtitle">{subtitle}</p><div class="booking-form-container">{widget_code}</div></div></section>'
+        return f'<section class="booking-section section page-section" id="rezervasyon"><div class="container"><h2 class="section-title">{title}</h2><p class="section-subtitle">{subtitle}</p><div class="booking-form-container">{widget_code}</div></div></section>'
 
     # Default booking form
     room_options = "".join([f'<option value="{r}">{r}</option>' for r in room_types]) if room_types else f'<option>{t["select_room"]}</option>'
@@ -840,7 +843,7 @@ def render_booking(props, theme, lang="tr"):
             contact_info += f'<span>Email: <strong>{email}</strong></span>'
         contact_info += '</div>'
 
-    return f'''<section class="booking-section section" id="rezervasyon">
+    return f'''<section class="booking-section section page-section" id="rezervasyon">
 <div class="container">
 <h2 class="section-title">{title}</h2>
 <p class="section-subtitle">{subtitle}</p>
@@ -1013,6 +1016,40 @@ def generate_full_html(project_data: Dict[str, Any]) -> str:
 </head>
 <body>
 {sections_html}
+<script>
+(function(){{
+  function showPage(id){{
+    var pages=document.querySelectorAll('.page-section');
+    pages.forEach(function(p){{p.classList.remove('page-active');}});
+    var target=id?document.getElementById(id):null;
+    if(target){{target.classList.add('page-active');}}
+    else if(pages.length>0){{pages[0].classList.add('page-active');id=pages[0].id;}}
+    window.scrollTo({{top:0,behavior:'instant'}});
+    document.querySelectorAll('.site-header nav a').forEach(function(a){{
+      var h=(a.getAttribute('href')||'').replace(/^#/,'');
+      a.classList.toggle('nav-active',h===id);
+    }});
+    try{{history.replaceState(null,'','#'+id);}}catch(e){{}}
+  }}
+  document.addEventListener('click',function(e){{
+    var a=e.target.closest('a');
+    if(!a)return;
+    var href=a.getAttribute('href')||'';
+    if(href.charAt(0)!=='#')return;
+    e.preventDefault();
+    var id=href.slice(1);
+    if(!id){{var first=document.querySelector('.page-section');if(first)showPage(first.id);return;}}
+    showPage(id);
+  }});
+  document.addEventListener('submit',function(e){{if(e.target.tagName==='FORM')e.preventDefault();}});
+  var initHash=window.location.hash.slice(1);
+  if(initHash&&document.getElementById(initHash)){{showPage(initHash);}}
+  else{{
+    var first=document.querySelector('.page-section');
+    if(first){{first.classList.add('page-active');var fn=document.querySelector('.site-header nav a');if(fn)fn.classList.add('nav-active');}}
+  }}
+}})();
+</script>
 </body>
 </html>"""
 

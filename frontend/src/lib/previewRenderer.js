@@ -458,6 +458,9 @@ function generateCSS(theme) {
     .syroce-brand{display:flex;align-items:center;gap:6px;font-size:0.85rem;opacity:0.7;color:#fff}
     .syroce-brand:hover{opacity:1}
     .syroce-brand span{font-weight:700;color:${pc}}
+    .page-section{display:none}
+    .page-section.page-active{display:block}
+    .site-header nav a.nav-active{color:${pc};font-weight:700;border-bottom:2px solid ${pc}}
     @media(max-width:768px){
       .about-grid,.contact-grid{grid-template-columns:1fr;gap:30px}
       .footer-grid{grid-template-columns:1fr}
@@ -509,13 +512,13 @@ function renderSection(section, theme, t, allSections) {
     }
     case "hero": {
       const ctaHtml = props.ctaText ? `<a href="${props.ctaLink || "#"}" class="btn">${props.ctaText}</a>` : "";
-      return `<section class="hero ${props.layout || "fullscreen"}" id="anasayfa"><div class="hero-bg" style="background-image:url('${props.backgroundImage || ""}')"></div><div class="hero-overlay" style="opacity:${props.overlayOpacity || "0.5"}"></div><div class="hero-content"><h1>${props.title || ""}</h1><p>${props.subtitle || ""}</p>${ctaHtml}</div></section>`;
+      return `<section class="hero ${props.layout || "fullscreen"} page-section page-active" id="anasayfa"><div class="hero-bg" style="background-image:url('${props.backgroundImage || ""}')"></div><div class="hero-overlay" style="opacity:${props.overlayOpacity || "0.5"}"></div><div class="hero-content"><h1>${props.title || ""}</h1><p>${props.subtitle || ""}</p>${ctaHtml}</div></section>`;
     }
     case "about": {
       const imgHtml = props.image ? `<img src="${props.image}" alt="${props.title || ""}">` : "";
       const textHtml = `<div class="about-text"><h2>${props.title || ""}</h2><p>${props.description || ""}</p></div>`;
       const isRightImage = props.layout === "right-image";
-      return `<section class="section" id="hakkimizda"><div class="container"><div class="about-grid">${isRightImage ? textHtml + "<div>" + imgHtml + "</div>" : "<div>" + imgHtml + "</div>" + textHtml}</div></div></section>`;
+      return `<section class="section page-section" id="hakkimizda"><div class="container"><div class="about-grid">${isRightImage ? textHtml + "<div>" + imgHtml + "</div>" : "<div>" + imgHtml + "</div>" + textHtml}</div></div></section>`;
     }
     case "rooms": {
       const rooms = props.rooms || [];
@@ -523,7 +526,7 @@ function renderSection(section, theme, t, allSections) {
         const features = (room.features || []).map((f) => `<span>${f}</span>`).join("");
         return `<div class="room-card"><img src="${room.image || ""}" alt="${room.name || ""}"><div class="room-card-body"><h3>${room.name || ""}</h3><p>${room.description || ""}</p><div class="room-price">${room.price || ""}</div><div class="room-features">${features}</div></div></div>`;
       }).join("");
-      return `<section class="section" id="odalar"><div class="container"><h2 class="section-title">${props.title || ""}</h2><p class="section-subtitle">${props.subtitle || ""}</p><div class="rooms-grid">${roomsHtml}</div></div></section>`;
+      return `<section class="section page-section" id="odalar"><div class="container"><h2 class="section-title">${props.title || ""}</h2><p class="section-subtitle">${props.subtitle || ""}</p><div class="rooms-grid">${roomsHtml}</div></div></section>`;
     }
     case "menu": {
       const items = props.items || [];
@@ -532,7 +535,7 @@ function renderSection(section, theme, t, allSections) {
         return `<div class="room-card"><img src="${item.image || ""}" alt="${item.name || ""}"><div class="room-card-body"><h3>${item.name || ""}</h3><p>${item.description || ""}</p>${priceHtml}</div></div>`;
       }).join("");
       const sub = props.subtitle ? `<p class="section-subtitle">${props.subtitle}</p>` : "";
-      return `<section class="section" id="menu"><div class="container"><h2 class="section-title">${props.title || ""}</h2>${sub}<div class="rooms-grid">${itemsHtml}</div></div></section>`;
+      return `<section class="section page-section" id="menu"><div class="container"><h2 class="section-title">${props.title || ""}</h2>${sub}<div class="rooms-grid">${itemsHtml}</div></div></section>`;
     }
     case "tours": {
       const tours = props.tours || [];
@@ -542,13 +545,13 @@ function renderSection(section, theme, t, allSections) {
         return `<div class="room-card"><img src="${tour.image || ""}" alt="${tour.name || ""}"><div class="room-card-body"><h3>${tour.name || ""}</h3><p>${tour.description || ""}</p>${priceHtml}${features}</div></div>`;
       }).join("");
       const sub = props.subtitle ? `<p class="section-subtitle">${props.subtitle}</p>` : "";
-      return `<section class="section" id="turlar"><div class="container"><h2 class="section-title">${props.title || ""}</h2>${sub}<div class="rooms-grid">${itemsHtml}</div></div></section>`;
+      return `<section class="section page-section" id="turlar"><div class="container"><h2 class="section-title">${props.title || ""}</h2>${sub}<div class="rooms-grid">${itemsHtml}</div></div></section>`;
     }
     case "gallery": {
       const images = props.images || [];
       const layoutClass = props.layout === "masonry" ? "masonry" : "";
       const imgsHtml = images.map((img) => `<div class="gallery-item"><img src="${img.url || ""}" alt="${img.alt || ""}"></div>`).join("");
-      return `<section class="section" style="background:#f8f8f8" id="galeri"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="gallery-grid ${layoutClass}">${imgsHtml}</div></div></section>`;
+      return `<section class="section page-section" style="background:#f8f8f8" id="galeri"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="gallery-grid ${layoutClass}">${imgsHtml}</div></div></section>`;
     }
     case "services": {
       const services = props.services || [];
@@ -556,7 +559,7 @@ function renderSection(section, theme, t, allSections) {
         const icon = SERVICE_ICONS[svc.icon] || SERVICE_ICONS.spa;
         return `<div class="service-card"><div class="service-icon">${icon}</div><h3>${svc.name || ""}</h3><p>${svc.description || ""}</p></div>`;
       }).join("");
-      return `<section class="section" id="hizmetler"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="services-grid">${svcHtml}</div></div></section>`;
+      return `<section class="section page-section" id="hizmetler"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="services-grid">${svcHtml}</div></div></section>`;
     }
     case "testimonials": {
       const testimonials = props.testimonials || [];
@@ -564,10 +567,10 @@ function renderSection(section, theme, t, allSections) {
         const stars = STAR_SVG.repeat(testimonial.rating || 5);
         return `<div class="testimonial-card"><div class="testimonial-stars">${stars}</div><p>"${testimonial.text || ""}"</p><div class="testimonial-author">${testimonial.name || ""}</div></div>`;
       }).join("");
-      return `<section class="section" style="background:#f8f8f8" id="yorumlar"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="testimonials-grid">${itemsHtml}</div></div></section>`;
+      return `<section class="section page-section" style="background:#f8f8f8" id="yorumlar"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="testimonials-grid">${itemsHtml}</div></div></section>`;
     }
     case "contact": {
-      return `<section class="section" id="iletisim"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="contact-grid"><div class="contact-info"><h3>${t.contact_info}</h3><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${pc}" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${props.address || ""}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${pc}" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${props.phone || ""}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${pc}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>${props.email || ""}</span></div></div><div class="contact-form"><input type="text" placeholder="${t.your_name}"><input type="email" placeholder="${t.your_email}"><input type="text" placeholder="${t.subject}"><textarea placeholder="${t.message}"></textarea><button class="btn">${t.send}</button></div></div></div></section>`;
+      return `<section class="section page-section" id="iletisim"><div class="container"><h2 class="section-title">${props.title || ""}</h2><div class="contact-grid"><div class="contact-info"><h3>${t.contact_info}</h3><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${pc}" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${props.address || ""}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${pc}" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>${props.phone || ""}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${pc}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>${props.email || ""}</span></div></div><div class="contact-form"><input type="text" placeholder="${t.your_name}"><input type="email" placeholder="${t.your_email}"><input type="text" placeholder="${t.subject}"><textarea placeholder="${t.message}"></textarea><button class="btn">${t.send}</button></div></div></div></section>`;
     }
     case "banner": {
       const ctaHtml = props.ctaText ? `<a href="${props.ctaLink || "#"}" class="btn">${props.ctaText}</a>` : "";
@@ -582,7 +585,7 @@ function renderSection(section, theme, t, allSections) {
       const email = props.email || "";
 
       if (widgetCode) {
-        return `<section class="booking-section section" id="rezervasyon"><div class="container"><h2 class="section-title">${title}</h2><p class="section-subtitle">${subtitle}</p><div class="booking-form-container">${widgetCode}</div></div></section>`;
+        return `<section class="booking-section section page-section" id="rezervasyon"><div class="container"><h2 class="section-title">${title}</h2><p class="section-subtitle">${subtitle}</p><div class="booking-form-container">${widgetCode}</div></div></section>`;
       }
 
       const roomOptions = roomTypes.length > 0
@@ -598,7 +601,7 @@ function renderSection(section, theme, t, allSections) {
         contactInfo += `</div>`;
       }
 
-      return `<section class="booking-section section" id="rezervasyon"><div class="container"><h2 class="section-title">${title}</h2><p class="section-subtitle">${subtitle}</p><div class="booking-form-container"><form onsubmit="return false;"><div class="booking-form"><div class="booking-field"><label>${t.check_in}</label><input type="date" name="checkin"></div><div class="booking-field"><label>${t.check_out}</label><input type="date" name="checkout"></div><div class="booking-field"><label>${t.adults}</label><select name="adults"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div><div class="booking-field"><label>${t.children}</label><select name="children"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></div><div class="booking-field"><label>${t.room_type}</label><select name="room_type">${roomOptions}</select></div><div class="booking-field"><label>${t.your_name}</label><input type="text" name="name" placeholder="${t.your_name}"></div><div class="booking-field"><label>${t.your_email}</label><input type="email" name="email" placeholder="${t.your_email}"></div><div class="booking-field"><label>${t.phone}</label><input type="tel" name="phone" placeholder="${t.phone}"></div><div class="booking-submit"><button type="submit" class="btn">${t.make_reservation}</button></div></div></form>${contactInfo}</div></div></section>`;
+      return `<section class="booking-section section page-section" id="rezervasyon"><div class="container"><h2 class="section-title">${title}</h2><p class="section-subtitle">${subtitle}</p><div class="booking-form-container"><form onsubmit="return false;"><div class="booking-form"><div class="booking-field"><label>${t.check_in}</label><input type="date" name="checkin"></div><div class="booking-field"><label>${t.check_out}</label><input type="date" name="checkout"></div><div class="booking-field"><label>${t.adults}</label><select name="adults"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div><div class="booking-field"><label>${t.children}</label><select name="children"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></div><div class="booking-field"><label>${t.room_type}</label><select name="room_type">${roomOptions}</select></div><div class="booking-field"><label>${t.your_name}</label><input type="text" name="name" placeholder="${t.your_name}"></div><div class="booking-field"><label>${t.your_email}</label><input type="email" name="email" placeholder="${t.your_email}"></div><div class="booking-field"><label>${t.phone}</label><input type="tel" name="phone" placeholder="${t.phone}"></div><div class="booking-submit"><button type="submit" class="btn">${t.make_reservation}</button></div></div></form>${contactInfo}</div></div></section>`;
     }
     case "footer": {
       const social = props.socialLinks || {};
@@ -772,22 +775,56 @@ export function generatePreviewHTML(sections, theme, lang = "tr") {
 <body>
 ${sectionsHtml}
 <script>
+(function(){
+  function showPage(id){
+    var pages = document.querySelectorAll('.page-section');
+    pages.forEach(function(p){ p.classList.remove('page-active'); });
+    var target = id ? document.getElementById(id) : null;
+    if(target){
+      target.classList.add('page-active');
+    } else if(pages.length > 0){
+      pages[0].classList.add('page-active');
+      id = pages[0].id;
+    }
+    window.scrollTo({top:0, behavior:'instant'});
+    document.querySelectorAll('.site-header nav a').forEach(function(a){
+      var h = (a.getAttribute('href')||'').replace(/^#/,'');
+      a.classList.toggle('nav-active', h === id);
+    });
+    try{ history.replaceState(null,'','#'+id); }catch(e){}
+  }
+
   document.addEventListener('click', function(e){
     var a = e.target.closest('a');
     if(!a) return;
     var href = a.getAttribute('href') || '';
     if(href.charAt(0) !== '#') return;
     e.preventDefault();
-    if(href === '#' || href.length < 2){
-      window.scrollTo({top:0, behavior:'smooth'});
+    var id = href.slice(1);
+    if(!id){
+      var first = document.querySelector('.page-section');
+      if(first) showPage(first.id);
       return;
     }
-    var el = document.getElementById(href.slice(1));
-    if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    showPage(id);
   });
+
   document.addEventListener('submit', function(e){
-    if(e.target.tagName === 'FORM'){ e.preventDefault(); }
+    if(e.target.tagName === 'FORM') e.preventDefault();
   });
+
+  var initHash = window.location.hash.slice(1);
+  if(initHash && document.getElementById(initHash)){
+    showPage(initHash);
+  } else {
+    var first = document.querySelector('.page-section');
+    if(first){
+      first.classList.add('page-active');
+      var firstNav = document.querySelector('.site-header nav a');
+      if(firstNav) firstNav.classList.add('nav-active');
+    }
+  }
+})();
 </script>
 </body>
 </html>`;
