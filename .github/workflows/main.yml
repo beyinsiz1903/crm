@@ -33,7 +33,7 @@ jobs:
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Frontend bağımlılıkları kur
         working-directory: frontend
@@ -41,12 +41,7 @@ jobs:
 
       - name: Frontend lint (eslint)
         working-directory: frontend
-        run: |
-          if [ -f .eslintrc.json ] || [ -f .eslintrc.js ] || grep -q '"eslintConfig"' package.json; then
-            npx eslint src --max-warnings=0 || echo "Lint uyarıları var (engellemedi)."
-          else
-            echo "ESLint config yok, atlandı."
-          fi
+        run: yarn lint
 
   # ---------- BACKEND TESTS ----------
   backend-tests:
@@ -62,7 +57,8 @@ jobs:
     env:
       MONGO_URL: mongodb://localhost:27017
       DB_NAME: test_db
-      JWT_SECRET: test-secret
+      TEST_MONGO_URL: mongodb://localhost:27017
+      JWT_SECRET: ci-only-test-key-not-for-production-2026
 
     steps:
       - uses: actions/checkout@v4
@@ -101,8 +97,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CI: false
-      REACT_APP_BACKEND_URL: http://localhost:8000
+      CI: true
+      REACT_APP_BACKEND_URL: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -110,13 +106,17 @@ jobs:
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: yarn
           cache-dependency-path: frontend/yarn.lock
 
       - name: Frontend paketlerini kur
         working-directory: frontend
         run: yarn install --frozen-lockfile --network-timeout 600000
+
+      - name: Frontend testleri
+        working-directory: frontend
+        run: yarn test
 
       - name: Build al
         working-directory: frontend
@@ -142,7 +142,7 @@ jobs:
     env:
       MONGO_URL: mongodb://localhost:27017
       DB_NAME: contract_db
-      JWT_SECRET: ci-secret
+      JWT_SECRET: ci-only-contract-key-not-for-production-2026
 
     steps:
       - uses: actions/checkout@v4
@@ -197,7 +197,7 @@ jobs:
 
           # Auth-required endpoint should reject without token
           r = requests.get(f"{base}/api/templates")
-          check("GET /api/templates (no auth)", r.status_code in (200, 401, 403))
+          check("GET /api/templates (no auth)", r.status_code == 401)
 
           fails = [n for n,ok,_ in checks if not ok]
           if fails:
@@ -214,7 +214,6 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -229,19 +228,19 @@ jobs:
       - name: Python bağımlılıklarını tara
         run: |
           if [ -f backend/requirements.txt ]; then
-            pip-audit -r backend/requirements.txt --strict || echo "pip-audit uyarıları bulundu."
+            pip-audit -r backend/requirements.txt --strict
           fi
 
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: yarn audit
         working-directory: frontend
         run: |
           yarn install --frozen-lockfile --network-timeout 600000
-          yarn audit --level high || echo "yarn audit uyarıları bulundu (engellemedi)."
+          yarn audit
 
   # ---------- SECRETS SCAN ----------
   secrets-scan:
@@ -312,7 +311,7 @@ jobs:
       - name: Node.js kur
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Eskiyen paketler (rapor amaçlı)
         working-directory: frontend

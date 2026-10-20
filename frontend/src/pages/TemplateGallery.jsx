@@ -8,8 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import PageHeader from "@/components/PageHeader";
-import { getTemplates, createProject } from "@/lib/api";
-import { generatePreviewHTML } from "@/lib/previewRenderer";
+import { getTemplates, createProject, renderPreview } from "@/lib/api";
 
 const SEGMENTS = [
   { value: "all", label: "Tumu" },
@@ -88,6 +87,16 @@ export default function TemplateGallery() {
   const [styleFilter, setStyleFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [previewHtml, setPreviewHtml] = useState('');
+  useEffect(() => {
+    if (!previewTemplate) return;
+    const controller = new AbortController();
+    setPreviewHtml('');
+    renderPreview(previewTemplate, controller.signal).then(setPreviewHtml).catch(error => {
+      if (!controller.signal.aborted) setPreviewHtml('<p>Önizleme yüklenemedi. Yeniden açmayı deneyin.</p>');
+    });
+    return () => controller.abort();
+  }, [previewTemplate]);
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
@@ -287,7 +296,8 @@ export default function TemplateGallery() {
           <div className="flex-1 overflow-hidden bg-muted">
             {previewTemplate && (
               <iframe
-                srcDoc={generatePreviewHTML(previewTemplate.sections, previewTemplate.theme)}
+                srcDoc={previewHtml}
+                sandbox="allow-scripts allow-forms allow-popups"
                 className="w-full h-full border-0"
                 title="Template Preview"
               />

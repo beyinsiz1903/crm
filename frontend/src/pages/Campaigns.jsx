@@ -55,7 +55,7 @@ export default function Campaigns() {
     await deleteCampaign(id).catch(console.error); load();
   };
 
-  const handleActivate = async (id) => { await activateCampaign(id).catch(console.error); load(); };
+  const handleActivate = async (id) => { await activateCampaign(id).catch(error => alert(error.response?.data?.detail || 'Kampanya baslatilamadi')); load(); };
   const handlePause = async (id) => { await pauseCampaign(id).catch(console.error); load(); };
 
   const addStep = () => {
@@ -72,7 +72,7 @@ export default function Campaigns() {
 
   return (
     <div className="page-content">
-      <PageHeader title="Email Kampanyalari" subtitle="Drip kampanyalar ve sekans email gonderimi (MOCK)" />
+      <PageHeader title="Email Kampanyalari" subtitle="Taslak yonetimi. Gercek gonderim icin e-posta saglayicisi kurulmalidir." />
       <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-2 text-sm">
         <AlertTriangle size={16} className="text-yellow-500" />
         <span className="text-yellow-700">Email gonderimi simule edilmektedir. Gercek email entegrasyonu icin bir email servisi (SendGrid vb.) gereklidir.</span>

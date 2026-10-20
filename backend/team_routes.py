@@ -17,7 +17,7 @@ def create_team_router(db, get_current_user, log_activity_fn, serialize_doc, ser
 
     async def require_admin(authorization):
         user = await require_auth(authorization)
-        if user.get("role", "admin") != "admin":
+        if user.get("role", "viewer") != "admin":
             raise HTTPException(403, "Bu islem sadece admin icin")
         return user
 
@@ -36,14 +36,15 @@ def create_team_router(db, get_current_user, log_activity_fn, serialize_doc, ser
         if existing:
             raise HTTPException(400, "Bu e-posta zaten kayitli")
         now = datetime.now(timezone.utc).isoformat()
-        temp_password = str(uuid.uuid4())[:8]
+        import secrets
+        temp_password = secrets.token_urlsafe(18)
         user = {
             "id": str(uuid.uuid4()),
             "email": data.email,
             "name": data.name or data.email.split("@")[0],
             "password_hash": get_password_hash(temp_password),
             "role": data.role,
-            "status": "invited",
+            "status": "active",
             "invited_by": admin.get("id", ""),
             "created_at": now,
         }

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+export const BACKEND_URL = (process.env.REACT_APP_BACKEND_URL || '').replace(/\/$/, '');
 const API = `${BACKEND_URL}/api`;
 
 const api = axios.create({
@@ -52,10 +52,13 @@ export const getVersions = (projectId) => api.get(`/projects/${projectId}/versio
 export const createVersion = (projectId) => api.post(`/projects/${projectId}/versions`).then((r) => r.data);
 export const restoreVersion = (projectId, versionId) =>
   api.post(`/projects/${projectId}/restore/${versionId}`).then((r) => r.data);
+export const renderPreview = (project, signal) => api.post('/preview', project, { signal, responseType: 'text' }).then(r => r.data);
 
 // Publish / Live Hosting
 export const publishProject = (projectId) => api.post(`/projects/${projectId}/publish`).then((r) => r.data);
 export const unpublishProject = (projectId) => api.post(`/projects/${projectId}/unpublish`).then((r) => r.data);
+export const getReleases = (projectId) => api.get(`/projects/${projectId}/releases`).then(r => r.data);
+export const restoreRelease = (projectId, releaseId) => api.post(`/projects/${projectId}/releases/${releaseId}/restore`).then(r => r.data);
 
 // Languages
 export const getLanguages = () => api.get("/languages").then((r) => r.data);

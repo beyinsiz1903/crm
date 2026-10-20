@@ -16,7 +16,7 @@ import { getProjects, deleteProject, updateProject, exportProject, getClients } 
 const STATUS_OPTIONS = [
   { value: "all", label: "Tum Durumlar" },
   { value: "draft", label: "Taslak" },
-  { value: "published", label: "Yayinda" },
+  { value: "published", label: "Yayinda (Yayinla islemiyle)" },
   { value: "delivered", label: "Teslim Edildi" },
 ];
 
@@ -109,7 +109,8 @@ export default function Projects() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await updateProject(editDialog.id, editForm);
+      const { status, ...values } = editForm;
+      await updateProject(editDialog.id, status === 'published' ? values : {...values, status});
       setEditDialog(null);
       load();
     } catch (err) {
