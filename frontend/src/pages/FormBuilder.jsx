@@ -55,15 +55,17 @@ export default function FormBuilder() {
 
   const openEdit = (f) => {
     setEditingForm(f);
-    setForm({ name: f.name, project_id: f.project_id || "", form_type: f.form_type || "contact", fields: f.fields || [] });
+    setForm({ name: f.name, project_id: f.project_id || "", form_type: f.form_type || "contact", fields: f.fields || [], auto_create_lead: !!f.auto_create_lead, status: f.status });
     setDialogOpen(true);
   };
 
   const openSubs = async (f) => {
     setSelectedForm(f);
-    const subs = await getFormSubmissions(f.id).catch(() => []);
-    setSubmissions(subs);
-    setSubsOpen(true);
+    try {
+      const subs = await getFormSubmissions(f.id);
+      setSubmissions(subs);
+      setSubsOpen(true);
+    } catch { window.alert("Gonderimler yuklenemedi. Tekrar deneyin."); }
   };
 
   const handleSubmit = async (e) => {
@@ -74,13 +76,14 @@ export default function FormBuilder() {
       if (editingForm) { await updateForm(editingForm.id, form); }
       else { await createForm(form); }
       setDialogOpen(false); load();
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error(err); window.alert("Form kaydedilemedi. Degisiklikler korunuyor; tekrar deneyin."); }
     setSubmitting(false);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Bu formu silmek istediginize emin misiniz?")) return;
-    await deleteForm(id).catch(console.error); load();
+    try { await deleteForm(id); load(); }
+    catch { window.alert("Form silinemedi. Yetkinizi ve baglantinizi kontrol edin."); }
   };
 
   const addField = () => setForm({ ...form, fields: [...form.fields, { ...emptyField }] });
@@ -173,6 +176,9 @@ export default function FormBuilder() {
               ))}
             </div>
 
+            <label className="flex items-center gap-2 text-sm"><Switch checked={!!form.auto_create_lead} onCheckedChange={(value) => setForm({...form, auto_create_lead: value})} />Gonderimden CRM talebi olustur</label>
+            {editingForm && <label className="flex items-center gap-2 text-sm"><Switch checked={form.status === "active"} onCheckedChange={(value) => setForm({...form, status: value ? "active" : "inactive"})} />Form aktif</label>}
+            <p className="text-xs text-muted-foreground">Sitedeki alan degisiklikleri icin projeyi yeniden yayinlayin. Kayitlar bu panelde saklanir; e-posta gonderilmez.</p>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Iptal</Button>
               <Button type="submit" disabled={submitting}>{submitting ? "Kaydediliyor..." : editingForm ? "Guncelle" : "Olustur"}</Button>

@@ -30,9 +30,11 @@ import {
   getProject, updateProject, exportProject,
   cloneTemplateFromProject, getVersions, createVersion, restoreVersion,
   publishProject, unpublishProject,
+  renderPreview, BACKEND_URL,
+  getReleases, restoreRelease,
   getSectionPresets, createSectionPreset, deleteSectionPreset
 } from "@/lib/api";
-import { generatePreviewHTML } from "@/lib/previewRenderer";
+import { createSaveQueue, operationError } from '@/lib/saveQueue';
 
 const SECTION_LABELS = {
   header: "Baslik", hero: "Hero Banner", about: "Hakkimizda", rooms: "Odalar",
@@ -127,12 +129,18 @@ export default function TemplateEditor() {
   const [deviceMode, setDeviceMode] = useState("desktop");
   const [previewHtml, setPreviewHtml] = useState("");
   const [versions, setVersions] = useState([]);
+  const [releases, setReleases] = useState([]);
   const [showVersions, setShowVersions] = useState(false);
   const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateCategory, setTemplateCategory] = useState("custom");
   const [publishing, setPublishing] = useState(false);
   const saveTimeout = useRef(null);
+  const previewController = useRef(null);
+  const persist = useRef(createSaveQueue(p => updateProject(p.id, {
+    theme: p.theme, sections: p.sections, name: p.name, seo: p.seo,
+    language: p.language, export_mode: p.export_mode, analytics: p.analytics, bundle_assets: p.bundle_assets, legal: p.legal,
+  })));
   // Undo/Redo state
   const [undoStack, setUndoStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
@@ -161,14 +169,30 @@ export default function TemplateEditor() {
         if (p.published === undefined) p.published = false;
         if (p.bundle_assets === undefined) p.bundle_assets = false;
         setProject(p);
-        setPreviewHtml(generatePreviewHTML(p.sections, p.theme, p.language));
       })
       .catch(() => navigate("/projects"))
       .finally(() => setLoading(false));
   }, [projectId, navigate]);
 
-  const updatePreview = useCallback((sections, theme, lang) => {
-    setPreviewHtml(generatePreviewHTML(sections, theme, lang || "tr"));
+  const updatePreview = useCallback((draft) => {
+    previewController.current?.abort();
+    const controller = new AbortController();
+    previewController.current = controller;
+    const {sections, theme, language, name, seo, analytics, legal} = draft;
+    renderPreview({id:projectId, sections, theme, language, name, seo, analytics, legal}, controller.signal).then(setPreviewHtml).catch(() => {
+      if (!controller.signal.aborted) setPreviewHtml('<p>Önizleme yüklenemedi.</p>');
+    });
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!project) return;
+    const timer = setTimeout(() => updatePreview(project), 150);
+    return () => { clearTimeout(timer); previewController.current?.abort(); };
+  }, [project, updatePreview]);
+
+  useEffect(() => () => {
+    clearTimeout(saveTimeout.current);
+    previewController.current?.abort();
   }, []);
 
   const autoSave = useCallback((updatedProject) => {
@@ -176,20 +200,11 @@ export default function TemplateEditor() {
     saveTimeout.current = setTimeout(async () => {
       setSaving(true);
       try {
-        await updateProject(updatedProject.id, {
-          theme: updatedProject.theme,
-          sections: updatedProject.sections,
-          name: updatedProject.name,
-          seo: updatedProject.seo,
-          language: updatedProject.language,
-          export_mode: updatedProject.export_mode,
-          analytics: updatedProject.analytics,
-          bundle_assets: updatedProject.bundle_assets,
-        });
+        await persist.current(updatedProject);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       } catch (err) {
-        console.error("Auto-save failed:", err);
+        alert(operationError(err));
       } finally {
         setSaving(false);
       }
@@ -217,7 +232,6 @@ export default function TemplateEditor() {
     setUndoStack((prev) => prev.slice(0, -1));
     setProject((p) => {
       const updated = { ...p, sections: prevSnapshot.sections, theme: prevSnapshot.theme };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       return updated;
     });
@@ -233,7 +247,6 @@ export default function TemplateEditor() {
     setRedoStack((prev) => prev.slice(0, -1));
     setProject((p) => {
       const updated = { ...p, sections: nextSnapshot.sections, theme: nextSnapshot.theme };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       return updated;
     });
@@ -291,7 +304,6 @@ export default function TemplateEditor() {
         }
         return newSection;
       });
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       return updated;
     });
@@ -301,7 +313,6 @@ export default function TemplateEditor() {
     setProject((prev) => {
       pushUndoState(prev);
       const updated = { ...prev, theme: { ...prev.theme, [key]: value } };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       return updated;
     });
@@ -326,7 +337,6 @@ export default function TemplateEditor() {
   const updateLanguage = (lang) => {
     setProject((prev) => {
       const updated = { ...prev, language: lang };
-      updatePreview(updated.sections, updated.theme, lang);
       autoSave(updated);
       return updated;
     });
@@ -355,7 +365,6 @@ export default function TemplateEditor() {
       updated.sections = prev.sections.map((s) =>
         s.id === sectionId ? { ...s, visible: !s.visible } : s
       );
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       return updated;
     });
@@ -372,7 +381,6 @@ export default function TemplateEditor() {
       const newIndex = prev.sections.findIndex((s) => s.id === over.id);
       const newSections = arrayMove(prev.sections, oldIndex, newIndex);
       const updated = { ...prev, sections: newSections };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       return updated;
     });
@@ -398,7 +406,6 @@ export default function TemplateEditor() {
         ? [...prev.sections.slice(0, footerIdx), newSection, ...prev.sections.slice(footerIdx)]
         : [...prev.sections, newSection];
       const updated = { ...prev, sections };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       setActiveSection(newSection.id);
       return updated;
@@ -427,7 +434,6 @@ export default function TemplateEditor() {
         ? [...prev.sections.slice(0, footerIdx), newSection, ...prev.sections.slice(footerIdx)]
         : [...prev.sections, newSection];
       const updated = { ...prev, sections };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       setActiveSection(newSection.id);
       return updated;
@@ -439,7 +445,6 @@ export default function TemplateEditor() {
       const section = prev.sections.find((s) => s.id === sectionId);
       if (section?.type === "footer" || section?.type === "header") return prev;
       const updated = { ...prev, sections: prev.sections.filter((s) => s.id !== sectionId) };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       if (activeSection === sectionId) setActiveSection(null);
       return updated;
@@ -448,6 +453,7 @@ export default function TemplateEditor() {
 
   const handleExport = async () => {
     try {
+      await handleSave();
       const blob = await exportProject(projectId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -456,27 +462,19 @@ export default function TemplateEditor() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export failed:", err);
+      alert(operationError(err));
     }
   };
 
   const handleSave = async () => {
+    clearTimeout(saveTimeout.current);
     setSaving(true);
     try {
-      await updateProject(projectId, {
-        theme: project.theme,
-        sections: project.sections,
-        name: project.name,
-        seo: project.seo,
-        language: project.language,
-        export_mode: project.export_mode,
-        analytics: project.analytics,
-        bundle_assets: project.bundle_assets,
-      });
+      await persist.current(project);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
-      console.error(err);
+      throw err;
     } finally {
       setSaving(false);
     }
@@ -486,20 +484,14 @@ export default function TemplateEditor() {
     setPublishing(true);
     try {
       await handleSave();
-      if (project.published) {
-        await unpublishProject(projectId);
-        setProject((p) => ({ ...p, published: false, status: "draft" }));
-      } else {
         const result = await publishProject(projectId);
         setProject((p) => ({ ...p, published: true, status: "published" }));
         // Open hosted URL in new tab
         if (result.live_url) {
-          const backendUrl = process.env.REACT_APP_BACKEND_URL;
-          window.open(`${backendUrl}${result.live_url}`, "_blank");
+          window.open(`${BACKEND_URL}${result.live_url}`, "_blank", 'noopener,noreferrer');
         }
-      }
     } catch (err) {
-      console.error(err);
+      alert(operationError(err));
     } finally {
       setPublishing(false);
     }
@@ -527,7 +519,6 @@ export default function TemplateEditor() {
       if (restored.published === undefined) restored.published = false;
       if (restored.bundle_assets === undefined) restored.bundle_assets = false;
       setProject(restored);
-      updatePreview(restored.sections, restored.theme, restored.language);
     } catch (err) {
       console.error(err);
     }
@@ -535,8 +526,9 @@ export default function TemplateEditor() {
 
   const handleOpenVersions = async () => {
     try {
-      const v = await getVersions(projectId);
+      const [v, r] = await Promise.all([getVersions(projectId), getReleases(projectId)]);
       setVersions(v);
+      setReleases(r);
       setShowVersions(true);
     } catch (err) {
       console.error(err);
@@ -557,8 +549,7 @@ export default function TemplateEditor() {
   };
 
   const openHostedUrl = () => {
-    const backendUrl = process.env.REACT_APP_BACKEND_URL;
-    window.open(`${backendUrl}/api/hosted/${projectId}`, "_blank");
+    window.open(`${BACKEND_URL}/api/hosted/${projectId}/index.html`, "_blank", 'noopener,noreferrer');
   };
 
   // ==================== BLOCK LIBRARY ====================
@@ -619,7 +610,6 @@ export default function TemplateEditor() {
         ? [...prev.sections.slice(0, footerIdx), newSection, ...prev.sections.slice(footerIdx)]
         : [...prev.sections, newSection];
       const updated = { ...prev, sections };
-      updatePreview(updated.sections, updated.theme, updated.language);
       autoSave(updated);
       setActiveSection(newSection.id);
       return updated;
@@ -722,8 +712,14 @@ export default function TemplateEditor() {
           disabled={publishing}
           data-testid="editor-publish-button"
         >
-          <Send size={12} className="mr-1" /> {publishing ? "..." : project.published ? "Yayinda" : "Yayinla"}
+            <Send size={12} className="mr-1" /> {publishing ? "..." : project.published ? "Guncellemeleri Yayinla" : "Yayinla"}
         </Button>
+        {project.published && <Button variant="outline" size="sm" disabled={publishing} onClick={async () => {
+          if (!window.confirm('Site yayından kaldırılsın mı?')) return;
+          setPublishing(true);
+          try { await unpublishProject(projectId); setProject(p => ({...p, published:false, status:'draft'})); }
+          catch(error) { alert(operationError(error)); } finally { setPublishing(false); }
+        }}>Yayindan kaldir</Button>}
         {project.published && (
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={openHostedUrl} title="Canli siteyi ac" data-testid="editor-open-hosted">
             <ExternalLink size={14} />
@@ -735,7 +731,7 @@ export default function TemplateEditor() {
         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setTemplateName(project.name); setShowSaveAsTemplate(true); }} data-testid="editor-save-as-template">
           <Copy size={12} className="mr-1" /> Sablon
         </Button>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving} data-testid="template-editor-save-button">
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleSave().catch(error => alert(operationError(error)))} disabled={saving} data-testid="template-editor-save-button">
           <Save size={12} className="mr-1" /> {saving ? "..." : "Kaydet"}
         </Button>
         <Button size="sm" className="h-7 text-xs" onClick={handleExport} data-testid="template-editor-export-zip-button">
@@ -885,9 +881,9 @@ export default function TemplateEditor() {
                     <p className="text-[10px] text-muted-foreground mt-1">Google Analytics 4 olcum kimligini girin.</p>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Ozel Izleme Kodu (Head)</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">Eski Ozel Kod (kaldirilmasi gerekir)</label>
                     <Textarea value={project.analytics?.custom_head_code || ""} onChange={(e) => updateAnalytics("custom_head_code", e.target.value)} className="text-sm min-h-[80px] font-mono" data-testid="editor-analytics-custom-code" placeholder="<!-- Facebook Pixel, Hotjar, vb. -->" />
-                    <p className="text-[10px] text-muted-foreground mt-1">Export ve canli sitede head bolumune eklenir.</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Ham script calistirilmaz; bu alan doluysa yayin durdurulur. Temizleyin ve desteklenen GA kimligini kullanin.</p>
                   </div>
                 </div>
               </ScrollArea>
@@ -900,6 +896,12 @@ export default function TemplateEditor() {
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                     <Settings2 size={12} /> Proje Ayarlari
                   </h3>
+                  {['privacy', 'terms'].map(key => <label key={key} className="block text-xs">{key === 'privacy' ? 'Otelin Gizlilik ve Iletisim Bilgilendirmesi' : 'Otelin Kullanim / Rezervasyon Kosullari'}
+                    <Textarea value={project.legal?.[key] || ''} onChange={e => {
+                      const updated = {...project, legal:{...project.legal, [key]:e.target.value}};
+                      setProject(updated); autoSave(updated);
+                    }} placeholder="Otelin onayladigi metni girin; otomatik hukuki metin uretilmez." />
+                  </label>)}
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Web Sitesi Dili</label>
                     <Select value={project.language || "tr"} onValueChange={updateLanguage}>
@@ -991,7 +993,7 @@ export default function TemplateEditor() {
         {/* Right Panel - Preview */}
         <div className="editor-right">
           <div className={`preview-frame ${deviceMode}`}>
-            <iframe srcDoc={previewHtml} title="Preview" data-testid="editor-preview-iframe" />
+            <iframe srcDoc={previewHtml} sandbox="allow-scripts allow-forms allow-popups" title="Preview" data-testid="editor-preview-iframe" />
           </div>
         </div>
       </div>
@@ -1003,6 +1005,14 @@ export default function TemplateEditor() {
             <DialogTitle className="flex items-center gap-2"><History size={18} /> Versiyon Gecmisi</DialogTitle>
           </DialogHeader>
           <div className="space-y-2 max-h-96 overflow-auto">
+            {releases.length > 0 && <div className="space-y-2"><h3>Canli Yayin Surumleri</h3>{releases.map(release => <div key={release.id} className="flex items-center justify-between gap-2 p-2 border rounded">
+              <span className="text-xs">{new Date(release.created_at).toLocaleString('tr-TR')}</span>
+              <Button size="sm" variant="outline" onClick={async () => {
+                if (!window.confirm('Canli site bu surume geri alinsin mi? Taslak degismeyecek.')) return;
+                try { await restoreRelease(projectId, release.id); setProject(p => ({...p, published:true, status:'published'})); setShowVersions(false); }
+                catch(error) { alert(operationError(error)); }
+              }}>Bu Yayina Don</Button>
+            </div>)}</div>}
             {versions.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-sm text-muted-foreground">Henuz versiyon yok.</p>
@@ -1255,13 +1265,13 @@ function SectionForm({ section, onUpdate, deviceMode }) {
         <div className="space-y-3">
           <div className="p-2 bg-primary/10 rounded-lg">
             <p className="text-[10px] text-primary font-medium">Rezervasyon Widget</p>
-            <p className="text-[10px] text-muted-foreground">Harici bir booking engine embed kodu veya yerlesik formu kullanabilirsiniz.</p>
+            <p className="text-[10px] text-muted-foreground">Dogrulanmis bir rezervasyon sayfasi adresi veya HTTPS iframe kullanin. Bu arac kendi basina PMS rezervasyonu olusturmaz.</p>
           </div>
           <Field label="Baslik" prop="title" placeholder="Rezervasyon" />
           <Field label="Alt Baslik" prop="subtitle" placeholder="Tatilinizi simdi planlayin" />
           <Field label="Telefon" prop="phone" placeholder="+90 555 123 4567" />
           <Field label="E-posta" prop="email" placeholder="info@otel.com" />
-          <Field label="Booking URL (Form action)" prop="bookingUrl" placeholder="https://booking.com/hotel/..." />
+          <Field label="HTTPS Rezervasyon Sayfasi" prop="bookingUrl" placeholder="https://rezervasyon.oteliniz.com" />
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Oda Tipleri (virgul ile ayirin)</label>
             <Input
@@ -1279,14 +1289,14 @@ function SectionForm({ section, onUpdate, deviceMode }) {
               onChange={(e) => onUpdate("widgetCode", e.target.value)}
               className="text-sm min-h-[80px] font-mono"
               data-testid="editor-field-booking-widgetCode"
-              placeholder="<script>...</script> veya <iframe>...</iframe>"
+              placeholder={'<iframe src="https://rezervasyon.oteliniz.com"></iframe>'}
             />
-            <p className="text-[10px] text-muted-foreground mt-1">Booking.com, HotelRunner vb. embed kodu yapistirin. Bos birakirsaniz yerlesik form kullanilir.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Yalnız HTTPS iframe desteklenir; script çalıştırılmaz. Adres veya iframe yoksa yayın kontrolü durur.</p>
           </div>
         </div>
       );
     case "footer":
-      return (<div className="space-y-3"><Field label="Otel Adi" prop="hotelName" /><Field label="Adres" prop="address" /><Field label="Telefon" prop="phone" /><Field label="E-posta" prop="email" /><p className="text-[10px] text-muted-foreground italic">* "Powered by Syroce" ibaresi her zaman gorunur.</p></div>);
+      return (<div className="space-y-3"><Field label="Otel Adi" prop="hotelName" /><Field label="Adres" prop="address" /><Field label="Telefon" prop="phone" /><Field label="E-posta" prop="email" />{['facebook','instagram','twitter'].map(network => <label key={network} className="block text-xs">{network}<Input value={props.socialLinks?.[network] || ''} onChange={e => onUpdate('socialLinks', {...props.socialLinks, [network]:e.target.value})} placeholder="https://… veya bos birakin" /></label>)}<p className="text-[10px] text-muted-foreground italic">* "Powered by Syroce" ibaresi her zaman gorunur.</p></div>);
     default:
       return <p className="text-xs text-muted-foreground">Bu bolum icin duzenleme secenegi yok.</p>;
   }

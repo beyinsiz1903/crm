@@ -7,6 +7,17 @@ import hashlib
 import asyncio
 from typing import Dict, Any, List, Tuple
 from urllib.parse import urlparse
+from html import escape, unescape
+from site_safety import prepare_project, safe_url
+from site_runtime import SITE_RUNTIME
+from form_validation import field_key
+from pathlib import Path
+from urllib.parse import urljoin, urlsplit
+from html.parser import HTMLParser
+from asset_transport import image_client
+from datetime import datetime, timezone
+
+UPLOADS_DIR = Path(__file__).parent / 'uploads'
 
 # ==================== TRANSLATIONS ====================
 TRANSLATIONS = {
@@ -592,8 +603,12 @@ def generate_css(theme: Dict[str, Any]) -> str:
     .site-header nav a{{color:#fff;margin-left:25px;font-size:0.95rem;font-weight:500;transition:opacity 0.2s}}
     .site-header nav a:hover{{opacity:0.8}}
     .site-header nav a.nav-active{{opacity:1;font-weight:700;border-bottom:2px solid {pc}}}
-    .page-section{{display:none}}
-    .page-section.page-active{{display:block}}
+    .page-section{{display:block}}
+    .mobile-menu{{display:none}}
+    .mobile-menu summary{{cursor:pointer;color:inherit;padding:10px;border:1px solid currentColor;border-radius:6px}}
+    .mobile-links{{background:{sc};padding:16px;position:absolute;right:20px;max-height:75vh;overflow:auto;border-radius:8px}}
+    .mobile-links a{{display:block;color:#fff;padding:10px}}
+    @media(max-width:768px){{.site-header .mobile-menu{{display:block}}}}
     .hero{{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;overflow:hidden}}
     .hero-bg{{position:absolute;inset:0;background-size:cover;background-position:center}}
     .hero-overlay{{position:absolute;inset:0;background:rgba(0,0,0,0.5)}}
@@ -680,7 +695,17 @@ def generate_css(theme: Dict[str, Any]) -> str:
       .booking-form{{grid-template-columns:1fr}}
     }}
     """
-    return base + style_css
+    # Keep real form controls usable even when a theme customizes inputs.
+    controls_css = '''
+    html{scroll-padding-top:100px}
+    .contact-form label{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+    .contact-form input:not([type=checkbox]),.contact-form textarea,.contact-form select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #aaa!important;background:#fff!important;color:#111!important;min-height:44px}
+    .contact-form label:has(input[type=checkbox]){display:flex;flex-direction:row;align-items:flex-start;gap:12px;line-height:1.6}
+    .contact-form input[type=checkbox]{width:20px!important;height:20px!important;min-width:20px;margin:3px 0;appearance:auto}
+    .contact-form button{min-height:44px}
+    .contact-form :focus-visible{outline:3px solid #1769e0;outline-offset:3px}
+    '''
+    return base + style_css + controls_css
 
 
 def render_header(props, theme, lang="tr", nav_links=None):
@@ -692,7 +717,7 @@ def render_header(props, theme, lang="tr", nav_links=None):
         menu_items = props.get("menuItems", [])
         menu_html = "".join(['<a href="#' + item.lower().replace(" ", "-") + '">' + item + '</a>' for item in menu_items])
     style = props.get("style", "transparent")
-    return f'<header class="site-header {style}"><div class="nav-inner"><div class="logo">{hotel_name}</div><nav>{menu_html}</nav></div></header>'
+    return f'<header class="site-header {style}"><div class="nav-inner"><a class="logo" href="{nav_links[0][1] if nav_links else "#anasayfa"}">{hotel_name}</a><nav aria-label="Main navigation">{menu_html}</nav><details class="mobile-menu"><summary aria-label="Menu">☰ Menu</summary><div class="mobile-links">{menu_html}</div></details></div></header>'
 
 
 def render_hero(props, theme, lang="tr"):
@@ -799,7 +824,18 @@ def render_contact(props, theme, lang="tr"):
     email = props.get("email", "")
     pc = theme.get("primaryColor", "#C5A572")
     t = get_t(lang)
-    return f'<section class="section page-section" id="iletisim"><div class="container"><h2 class="section-title">{title}</h2><div class="contact-grid"><div class="contact-info"><h3>{t["contact_info"]}</h3><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>{address}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>{phone}</span></div><div class="contact-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{pc}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span>{email}</span></div></div><div class="contact-form"><input type="text" placeholder="{t["your_name"]}"><input type="email" placeholder="{t["your_email"]}"><input type="text" placeholder="{t["subject"]}"><textarea placeholder="{t["message"]}"></textarea><button class="btn">{t["send"]}</button></div></div></div></section>'
+    endpoint = props.get('_submitUrl', '')
+    form = f'''<form class="contact-form" data-site-form action="{endpoint}" method="post">
+<label>{t['your_name']}<input name="name" required maxlength="160" autocomplete="name"></label>
+<label>{t['your_email']}<input name="email" type="email" required maxlength="254" autocomplete="email"></label>
+<label>{t['subject']}<input name="subject" maxlength="200"></label>
+<label>{t['message']}<textarea name="message" required maxlength="5000"></textarea></label>
+<label><input type="checkbox" name="consent" required> {'Talebimin yanıtlanması için iletişim bilgilerimin kullanılmasını kabul ediyorum.' if lang == 'tr' else 'I agree to the use of my contact details to respond to this request.'}</label>
+<input name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="display:none">
+<button class="btn" type="submit" {'' if endpoint else 'disabled'}>{t['send']}</button><p role="status" aria-live="polite">{'' if endpoint else ('Form henüz yayına bağlanmadı.' if lang == 'tr' else 'Form delivery has not been configured.')}</p></form>'''
+    # Keep contact text escaped by prepare_project; URLs are generated separately.
+    contact_links = f'<p><a href="tel:{re.sub(r"[^+0-9]", "", unescape(phone))}">{phone}</a></p><p><a href="mailto:{email}">{email}</a></p>'
+    return f'<section class="section page-section" id="iletisim"><div class="container"><h2 class="section-title">{title}</h2><div class="contact-grid"><div class="contact-info"><h3>{t["contact_info"]}</h3><p>{address}</p>{contact_links}</div>{form}</div></div></section>'
 
 
 def render_banner(props, theme, lang="tr"):
@@ -827,48 +863,18 @@ def render_booking(props, theme, lang="tr"):
     if widget_code:
         return f'<section class="booking-section section page-section" id="rezervasyon"><div class="container"><h2 class="section-title">{title}</h2><p class="section-subtitle">{subtitle}</p><div class="booking-form-container">{widget_code}</div></div></section>'
 
-    # Default booking form
-    room_options = "".join([f'<option value="{r}">{r}</option>' for r in room_types]) if room_types else f'<option>{t["select_room"]}</option>'
+    if booking_url:
+        return f'<section class="booking-section section page-section" id="rezervasyon"><div class="container"><h2 class="section-title">{title}</h2><p>{subtitle}</p><a class="btn" href="{booking_url}" rel="noopener noreferrer">{t["make_reservation"]}</a></div></section>'
+    return f'<section class="booking-section section page-section" id="rezervasyon"><div class="container"><h2>{title}</h2><p>{"Rezervasyon bağlantısı henüz yapılandırılmadı." if lang == "tr" else "Reservation link has not been configured."}</p></div></section>'
 
-    action_attr = f'action="{booking_url}" method="POST"' if booking_url else 'onsubmit="return false;"'
-
-    contact_info = ""
-    if phone or email:
-        contact_info = '<div style="text-align:center;margin-top:25px;padding-top:20px;border-top:1px solid #eee;color:#666;font-size:0.95rem">'
-        if phone:
-            contact_info += f'<span>{t["phone"]}: <strong>{phone}</strong></span>'
-        if phone and email:
-            contact_info += ' &nbsp;|&nbsp; '
-        if email:
-            contact_info += f'<span>Email: <strong>{email}</strong></span>'
-        contact_info += '</div>'
-
-    return f'''<section class="booking-section section page-section" id="rezervasyon">
-<div class="container">
-<h2 class="section-title">{title}</h2>
-<p class="section-subtitle">{subtitle}</p>
-<div class="booking-form-container">
-<form {action_attr}>
-<div class="booking-form">
-<div class="booking-field"><label>{t["check_in"]}</label><input type="date" name="checkin" required></div>
-<div class="booking-field"><label>{t["check_out"]}</label><input type="date" name="checkout" required></div>
-<div class="booking-field"><label>{t["adults"]}</label><select name="adults"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
-<div class="booking-field"><label>{t["children"]}</label><select name="children"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></div>
-<div class="booking-field"><label>{t["room_type"]}</label><select name="room_type">{room_options}</select></div>
-<div class="booking-field"><label>{t["your_name"]}</label><input type="text" name="name" placeholder="{t["your_name"]}" required></div>
-<div class="booking-field"><label>{t["your_email"]}</label><input type="email" name="email" placeholder="{t["your_email"]}" required></div>
-<div class="booking-field"><label>{t["phone"]}</label><input type="tel" name="phone" placeholder="{t["phone"]}"></div>
-<div class="booking-submit"><button type="submit" class="btn">{t["make_reservation"]}</button></div>
-</div>
-</form>
-{contact_info}
-</div>
-</div>
-</section>'''
 
 
 SECTION_NAV_MAP = {
     "hero": ("#anasayfa", "home"),
+    "about": ("#hakkimizda", "about"),
+    "services": ("#hizmetler", "services"),
+    "booking": ("#rezervasyon", "booking_title"),
+    "testimonials": ("#yorumlar", "testimonials"),
     "rooms": ("#odalar", "rooms"),
     "menu": ("#menu", "menu"),
     "tours": ("#turlar", "tours"),
@@ -902,13 +908,13 @@ def render_footer(props, theme, lang="tr", quick_links_html=None, all_sections=N
     email = props.get("email", "")
     social = props.get("socialLinks", {})
     t = get_t(lang)
-    social_html = "".join([f'<a href="{link}" title="{p.capitalize()}">{p[0].upper()}</a>' for p, link in social.items()])
+    social_html = "".join([f'<a href="{link}" title="{escape(p.capitalize())}" rel="noopener noreferrer">{escape(p[0].upper())}</a>' for p, link in social.items() if link and link != '#'])
     if quick_links_html is None:
         if all_sections is not None:
             quick_links_html = build_quick_links_from_sections(all_sections, lang)
         else:
             quick_links_html = f'<p><a href="#anasayfa">{t["home"]}</a></p><p><a href="#odalar">{t["rooms"]}</a></p><p><a href="#galeri">{t["gallery"]}</a></p><p><a href="#iletisim">{t["contact"]}</a></p>'
-    return f'<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>{hotel_name}</h3><p>{address}</p><div class="footer-social">{social_html}</div></div><div><h3>{t["quick_links"]}</h3>{quick_links_html}</div><div><h3>{t["contact"]}</h3><p>{phone}</p><p>{email}</p></div></div><div class="footer-bottom"><p>&copy; 2025 {hotel_name}. {t["all_rights"]}.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">{t["powered_by"]} <span>Syroce</span></a></div></div></footer>'
+    return f'<footer class="site-footer"><div class="container"><div class="footer-grid"><div><h3>{hotel_name}</h3><p>{address}</p><div class="footer-social">{social_html}</div></div><div><h3>{t["quick_links"]}</h3>{quick_links_html}</div><div><h3>{t["contact"]}</h3><p>{phone}</p><p>{email}</p></div></div><div class="footer-bottom"><p>&copy; {datetime.now(timezone.utc).year} {hotel_name}. {t["all_rights"]}.</p><a href="https://syroce.com" class="syroce-brand" target="_blank">{t["powered_by"]} <span>Syroce</span></a></div></div></footer>'
 
 
 SECTION_RENDERERS = {
@@ -953,7 +959,45 @@ def _get_seo_meta(project_data):
         meta += f'<meta property="og:title" content="{seo["title"]}">\n'
     if seo.get("description"):
         meta += f'<meta property="og:description" content="{seo["description"]}">\n'
+    base = project_data.get('site_base_url', '')
+    if base:
+        meta += f'<link rel="canonical" href="{base}index.html">\n'
+    meta += '<meta name="robots" content="index,follow">\n' if base else '<meta name="robots" content="noindex,nofollow">\n'
     return meta
+
+
+def render_public_content(project):
+    """Blog text and configured forms use the exact same renderer in every output."""
+    source = ''
+    legal = project.get('legal', {})
+    if legal:
+        links = ''.join(f'<a href="index.html#{key}">{title}</a> ' for key, title in [('privacy', 'Gizlilik / Privacy'), ('terms', 'Kosullar / Terms')] if legal.get(key))
+        source += f'<nav class="container" aria-label="Legal">{links}</nav>'
+    for key, title in [('privacy', 'Gizlilik / Privacy'), ('terms', 'Kosullar / Terms')]:
+        if legal.get(key):
+            source += f'<section class="section" id="{key}"><div class="container"><h2>{title}</h2><div style="white-space:pre-wrap">{legal[key]}</div></div></section>'
+    for post in project.get('public_blog_posts', []):
+        source += f'<article class="section" id="blog-{post.get("id", "")}"><div class="container"><h2>{post.get("title", "")}</h2><div style="white-space:pre-wrap">{post.get("content", "")}</div></div></article>'
+    for form in project.get('public_forms', []):
+        controls = ''
+        for index, field in enumerate(form.get('fields', [])):
+            key = field_key(field, index)
+            required = 'required' if field.get('required') else ''
+            kind = field.get('type', 'text')
+            if kind == 'textarea':
+                control = f'<textarea name="{key}" {required} maxlength="5000"></textarea>'
+            elif kind == 'select':
+                options = field.get('options', [])
+                if isinstance(options, str):
+                    options = options.split(',')
+                control = f'<select name="{key}" {required}><option value="">—</option>' + ''.join(f'<option>{str(o).strip()}</option>' for o in options) + '</select>'
+            else:
+                kind = 'tel' if kind == 'phone' else kind
+                kind = kind if kind in {'text', 'email', 'tel', 'date', 'number', 'checkbox'} else 'text'
+                control = f'<input type="{kind}" name="{key}" {required} maxlength="5000">'
+            controls += f'<label>{field.get("label", key)}{control}</label>'
+        source += f'<section class="section" id="form-{form.get("id", "")}"><div class="container"><h2>{form.get("name", "")}</h2><form class="contact-form" data-site-form action="{form.get("submit_url", "")}" method="post">{controls}<input name="website" tabindex="-1" aria-hidden="true" style="display:none"><button type="submit" class="btn">Gonder / Send</button><p role="status" aria-live="polite"></p></form></div></section>'
+    return source
 
 
 def _get_analytics_code(project_data):
@@ -961,23 +1005,38 @@ def _get_analytics_code(project_data):
     analytics = project_data.get("analytics", {})
     code = ""
     ga_id = analytics.get("ga_id", "")
-    if ga_id:
-        code += f'''<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id={ga_id}"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){{dataLayer.push(arguments);}}
-gtag('js', new Date());
-gtag('config', '{ga_id}');
-</script>
-'''
-    custom_code = analytics.get("custom_head_code", "")
-    if custom_code:
-        code += f'\n<!-- Custom Tracking Code -->\n{custom_code}\n'
+    if ga_id and re.fullmatch(r'G-[A-Z0-9]+', ga_id):
+        code = f'''<script>
+document.addEventListener('DOMContentLoaded', function() {{
+  var key = 'syroce-analytics-{ga_id}';
+  var box = document.createElement('aside'); box.setAttribute('aria-label','Analytics consent');
+  box.style.cssText='position:fixed;bottom:0;left:0;right:0;background:#fff;color:#111;padding:20px;z-index:1000;border:1px solid #ccc';
+  var text=document.createElement('p'); text.textContent='Optional analytics / İsteğe bağlı analiz çerezleri'; box.appendChild(text);
+  var policy=document.createElement('a'); policy.href='index.html#privacy'; policy.textContent='Privacy / Gizlilik'; box.appendChild(policy);
+  function loadAnalytics() {{
+    window['ga-disable-{ga_id}']=false;
+    if(window.gtag)window.gtag('consent','update',{{analytics_storage:'granted'}});
+    if(document.querySelector('script[data-syroce-ga]')) return;
+    window.dataLayer=window.dataLayer||[];
+    window.gtag=function(){{window.dataLayer.push(arguments);}};
+    var script=document.createElement('script'); script.async=true; script.dataset.syroceGa='true'; script.src='https://www.googletagmanager.com/gtag/js?id={ga_id}'; document.head.appendChild(script);
+    window.gtag('js',new Date()); window.gtag('config','{ga_id}');
+  }}
+  ['Accept / Kabul','Reject / Reddet'].forEach(function(label,i){{
+    var button=document.createElement('button'); button.type='button'; button.textContent=label; button.style.margin='10px';
+    button.onclick=function(){{try{{localStorage.setItem(key,i===0?'yes':'no');}}catch(e){{}} if(i===0)loadAnalytics(); else {{window['ga-disable-{ga_id}']=true; if(window.gtag)window.gtag('consent','update',{{analytics_storage:'denied'}});}} box.remove();}}; box.appendChild(button);
+  }});
+  var choice; try{{choice=localStorage.getItem(key);}}catch(e){{}}
+  if(choice==='yes')loadAnalytics(); else if(choice!=='no')document.body.appendChild(box);
+  var reset=document.createElement('button'); reset.type='button'; reset.textContent='Cookie settings / Çerez ayarları';
+  reset.onclick=function(){{document.body.appendChild(box);}}; document.body.appendChild(reset);
+}});
+</script>'''
     return code
 
 
 def generate_full_html(project_data: Dict[str, Any]) -> str:
+    project_data = prepare_project(project_data)
     theme = project_data.get("theme", {})
     sections = project_data.get("sections", [])
     project_name = project_data.get("name", "Hotel Website")
@@ -996,13 +1055,20 @@ def generate_full_html(project_data: Dict[str, Any]) -> str:
             if renderer:
                 if stype == "footer":
                     sections_html += render_footer(section.get("props", {}), theme, lang, all_sections=sections)
+                elif stype == 'header':
+                    links = [(get_t(lang).get(SECTION_NAV_MAP[s['type']][1], s['type']), SECTION_NAV_MAP[s['type']][0]) for s in sections if s.get('visible', True) and s.get('type') in SECTION_NAV_MAP]
+                    sections_html += render_header(section.get('props', {}), theme, lang, nav_links=links)
+                elif stype == 'contact':
+                    sections_html += render_contact({**section.get('props', {}), '_submitUrl': project_data.get('public_contact_url', '')}, theme, lang)
                 else:
                     sections_html += renderer(section.get("props", {}), theme, lang)
+
+    sections_html += render_public_content(project_data)
 
     css = generate_css(theme)
 
     return f"""<!DOCTYPE html>
-<html lang="{lang}">
+<html lang="{lang}" dir="{'rtl' if lang == 'ar' else 'ltr'}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1016,47 +1082,14 @@ def generate_full_html(project_data: Dict[str, Any]) -> str:
 </head>
 <body>
 {sections_html}
-<script>
-(function(){{
-  function showPage(id){{
-    var pages=document.querySelectorAll('.page-section');
-    pages.forEach(function(p){{p.classList.remove('page-active');}});
-    var target=id?document.getElementById(id):null;
-    if(target){{target.classList.add('page-active');}}
-    else if(pages.length>0){{pages[0].classList.add('page-active');id=pages[0].id;}}
-    window.scrollTo({{top:0,behavior:'instant'}});
-    document.querySelectorAll('.site-header nav a').forEach(function(a){{
-      var h=(a.getAttribute('href')||'').replace(/^#/,'');
-      a.classList.toggle('nav-active',h===id);
-    }});
-    try{{history.replaceState(null,'','#'+id);}}catch(e){{}}
-  }}
-  document.addEventListener('click',function(e){{
-    var a=e.target.closest('a');
-    if(!a)return;
-    var href=a.getAttribute('href')||'';
-    if(href.charAt(0)!=='#')return;
-    e.preventDefault();
-    var id=href.slice(1);
-    if(!id){{var first=document.querySelector('.page-section');if(first)showPage(first.id);return;}}
-    showPage(id);
-  }});
-  document.addEventListener('submit',function(e){{if(e.target.tagName==='FORM')e.preventDefault();}});
-  var initHash=window.location.hash.slice(1);
-  if(initHash&&document.getElementById(initHash)){{showPage(initHash);}}
-  else{{
-    var first=document.querySelector('.page-section');
-    if(first){{first.classList.add('page-active');var fn=document.querySelector('.site-header nav a');if(fn)fn.classList.add('nav-active');}}
-  }}
-}})();
-</script>
+{SITE_RUNTIME}
 </body>
 </html>"""
 
 
 def _build_page_html(title, css, fonts_url, seo_meta, lang, header_html, body_sections, footer_html, analytics_code=""):
     return f"""<!DOCTYPE html>
-<html lang="{lang}">
+<html lang="{lang}" dir="{'rtl' if lang == 'ar' else 'ltr'}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1072,6 +1105,7 @@ def _build_page_html(title, css, fonts_url, seo_meta, lang, header_html, body_se
 {header_html}
 {body_sections}
 {footer_html}
+{SITE_RUNTIME}
 </body>
 </html>"""
 
@@ -1080,6 +1114,17 @@ def _build_page_html(title, css, fonts_url, seo_meta, lang, header_html, body_se
 def _extract_image_urls(html_content: str) -> List[str]:
     """Extract all image URLs from HTML content."""
     urls = set()
+    class Images(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag == 'img':
+                value = dict(attrs).get('src', '')
+                if value.startswith(('http://', 'https://', '/api/uploads/')):
+                    urls.add(value)
+    Images().feed(html_content)
+    for value in re.findall(r'url\([\"\']?([^\"\')\s]+)', html_content):
+        value = unescape(value)
+        if value.startswith(('http://', 'https://', '/api/uploads/')):
+            urls.add(value)
     # Match src="..." and url('...')
     src_pattern = re.compile(r'(?:src|href)=["\']([^"\']+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^"\']*)?)["\']', re.IGNORECASE)
     url_pattern = re.compile(r'url\(["\']?([^"\')\s]+\.(?:jpg|jpeg|png|gif|webp|svg)(?:\?[^"\')\s]*)?)["\']?\)', re.IGNORECASE)
@@ -1094,20 +1139,31 @@ def _extract_image_urls(html_content: str) -> List[str]:
         if url.startswith(('http://', 'https://')):
             urls.add(url)
 
-    return list(urls)
+    return sorted({unescape(url) for url in urls})
 
 
 async def _download_image(client: httpx.AsyncClient, url: str) -> Tuple[str, bytes, str]:
     """Download an image and return (url, content, filename)."""
     try:
-        response = await client.get(url, follow_redirects=True, timeout=15.0)
-        if response.status_code == 200:
-            parsed = urlparse(url)
-            ext = os.path.splitext(parsed.path)[1] or '.jpg'
-            # Use hash of URL for filename to avoid collisions
-            url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
-            filename = f"img_{url_hash}{ext.split('?')[0]}"
-            return url, response.content, filename
+        current = url
+        for _ in range(4):
+            if not current.startswith(('http://', 'https://')) or urlsplit(current).username or urlsplit(current).password:
+                break
+            async with client.stream('GET', current) as response:
+                if response.status_code in {301, 302, 303, 307, 308}:
+                    current = urljoin(current, response.headers.get('location', ''))
+                    continue
+                content_type = response.headers.get('content-type', '').split(';')[0].lower()
+                extensions = {'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif'}
+                if response.status_code != 200 or content_type not in extensions:
+                    break
+                chunks = bytearray()
+                async for chunk in response.aiter_bytes():
+                    chunks.extend(chunk)
+                    if len(chunks) > 5 * 1024 * 1024:
+                        raise ValueError('Image exceeds 5MB')
+                filename = f"img_{hashlib.sha256(url.encode()).hexdigest()[:16]}{extensions[content_type]}"
+                return url, bytes(chunks), filename
     except Exception:
         pass
     return url, b"", ""
@@ -1120,19 +1176,45 @@ async def bundle_assets_in_html(html_content: str) -> Tuple[str, Dict[str, bytes
         return html_content, {}
 
     assets = {}
-    async with httpx.AsyncClient() as client:
-        tasks = [_download_image(client, url) for url in urls[:50]]  # Limit to 50 images
+    local_urls = []
+    remote_urls = []
+    public_host = urlsplit(os.getenv('PUBLIC_BASE_URL', '')).netloc
+    for url in urls:
+        parsed = urlsplit(url)
+        if parsed.path.startswith('/api/uploads/') and (not parsed.netloc or parsed.netloc == public_host):
+            filename = parsed.path.removeprefix('/api/uploads/')
+            if Path(filename).name != filename or Path(filename).suffix.lower() not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
+                raise ValueError('Invalid upload path')
+            path = UPLOADS_DIR / filename
+            if not path.is_file() or path.stat().st_size > 5 * 1024 * 1024:
+                raise ValueError(f'Uploaded image missing: {filename}')
+            local_urls.append((url, path.read_bytes(), filename))
+        else:
+            remote_urls.append(url)
+    if len(urls) > 100:
+        raise ValueError('At most 100 images can be bundled')
+    async with image_client() as client:
+        semaphore = asyncio.Semaphore(8)
+        async def bounded_download(url):
+            async with semaphore:
+                return await _download_image(client, url)
+        tasks = [bounded_download(url) for url in remote_urls]
         results = await asyncio.gather(*tasks)
+    results.extend(local_urls)
 
     for url, content, filename in results:
         if content and filename:
             assets[f"assets/{filename}"] = content
             html_content = html_content.replace(url, f"assets/{filename}")
+            html_content = html_content.replace(escape(url, quote=True), f"assets/{filename}")
+        else:
+            raise ValueError('Image could not be safely bundled; replace the URL or disable external asset bundling')
 
     return html_content, assets
 
 
 def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
+    project_data = prepare_project(project_data)
     theme = project_data.get("theme", {})
     sections = project_data.get("sections", [])
     project_name = project_data.get("name", "Hotel Website")
@@ -1144,14 +1226,15 @@ def create_multipage_export_zip(project_data: Dict[str, Any]) -> bytes:
     seo_meta = _get_seo_meta(project_data)
     analytics_code = _get_analytics_code(project_data)
     css = generate_css(theme)
-    folder = project_name.lower().replace(" ", "-")
+    folder = archive_folder(project_name)
 
     pages, readme_lines = _build_multipage_pages(project_data, sections, theme, lang, t, page_title, css, fonts_url, seo_meta, analytics_code)
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for page_name, html in pages.items():
-            zf.writestr(f"{folder}/{page_name}", html)
+            zf.writestr(f"{folder}/{page_name}", bundle_local_images(html, zf, folder))
+        write_site_metadata(zf, folder, pages, project_data.get('site_base_url', ''))
         pages_list = "\n".join(f"- {line}" for line in readme_lines)
         readme = f"""# {project_name}
 
@@ -1213,7 +1296,9 @@ def _build_multipage_pages(project_data, sections, theme, lang, t, page_title, c
         elif st == "banner": banners.append(p)
 
     # Dynamic nav: index + each detail page that exists
-    nav_links = [(t["home"], "index.html"), (t["about"], "index.html#hakkimizda")]
+    nav_links = [(t["home"], "index.html")]
+    if about_props:
+        nav_links.append((t["about"], "index.html#hakkimizda"))
     detail_pages = []  # (filename, title, body_html, readme_label)
 
     if rooms_props is not None:
@@ -1228,7 +1313,8 @@ def _build_multipage_pages(project_data, sections, theme, lang, t, page_title, c
     if gallery_props is not None:
         nav_links.append((t["gallery"], "gallery.html"))
         detail_pages.append(("gallery.html", t["gallery"], render_gallery(gallery_props, theme, lang), "gallery.html (Gallery)"))
-    nav_links.append((t["contact"], "contact.html"))
+    if contact_props:
+        nav_links.append((t["contact"], "contact.html"))
 
     # Quick links pointing to detail pages
     quick_links_html = "".join(f'<p><a href="{href}">{label}</a></p>' for label, href in nav_links)
@@ -1244,6 +1330,7 @@ def _build_multipage_pages(project_data, sections, theme, lang, t, page_title, c
     if testimonials_props: home_body += render_testimonials(testimonials_props, theme, lang)
     for bp in banners:
         home_body += render_banner(bp, theme, lang)
+    home_body += render_public_content(project_data)
 
     pages = {"index.html": _build_page_html(page_title, css, fonts_url, seo_meta, lang, header_html, home_body, footer_html, analytics_code)}
     readme_lines = ["index.html (Home)"]
@@ -1254,15 +1341,26 @@ def _build_multipage_pages(project_data, sections, theme, lang, t, page_title, c
         readme_lines.append(readme_label)
 
     # Contact page
-    contact_body = '<div style="padding-top:80px"></div>' + render_contact(contact_props, theme, lang)
-    pages["contact.html"] = _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, contact_body, footer_html, analytics_code)
-    readme_lines.append("contact.html (Contact)")
+    if contact_props:
+        contact_body = '<div style="padding-top:80px"></div>' + render_contact({**contact_props, '_submitUrl': project_data.get('public_contact_url', '')}, theme, lang)
+        pages["contact.html"] = _build_page_html(f"{t['contact']} - {page_title}", css, fonts_url, seo_meta, lang, header_html, contact_body, footer_html, analytics_code)
+        readme_lines.append("contact.html (Contact)")
+
+    destinations = {'#anasayfa': 'index.html', '#hakkimizda': 'index.html#hakkimizda', '#hizmetler': 'index.html#hizmetler', '#yorumlar': 'index.html#yorumlar', '#rezervasyon': 'index.html#rezervasyon', '#odalar': 'rooms.html', '#galeri': 'gallery.html', '#iletisim': 'contact.html', '#menu': 'menu.html', '#turlar': 'tours.html'}
+    for page_name, source in pages.items():
+        if project_data.get('site_base_url'):
+            base = project_data['site_base_url']
+            source = source.replace(f'<link rel="canonical" href="{base}index.html">', f'<link rel="canonical" href="{base}{page_name}">')
+        for anchor, destination in destinations.items():
+            source = source.replace(f'href="{anchor}"', f'href="{destination}"')
+        pages[page_name] = source
 
     return pages, readme_lines
 
 
 async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) -> bytes:
     """Create multipage export ZIP with bundled assets."""
+    project_data = prepare_project(project_data)
     theme = project_data.get("theme", {})
     sections = project_data.get("sections", [])
     project_name = project_data.get("name", "Hotel Website")
@@ -1274,7 +1372,7 @@ async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) 
     seo_meta = _get_seo_meta(project_data)
     analytics_code = _get_analytics_code(project_data)
     css = generate_css(theme)
-    folder = project_name.lower().replace(" ", "-")
+    folder = archive_folder(project_name)
 
     pages, readme_lines = _build_multipage_pages(project_data, sections, theme, lang, t, page_title, css, fonts_url, seo_meta, analytics_code)
 
@@ -1290,6 +1388,7 @@ async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) 
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for page_name, html in bundled_pages.items():
             zf.writestr(f"{folder}/{page_name}", html)
+        write_site_metadata(zf, folder, bundled_pages, project_data.get('site_base_url', ''))
         for asset_path, asset_data in all_assets.items():
             zf.writestr(f"{folder}/{asset_path}", asset_data)
         pages_list = "\n".join(f"- {line}" for line in readme_lines)
@@ -1302,13 +1401,14 @@ async def create_multipage_export_zip_with_assets(project_data: Dict[str, Any]) 
 async def create_export_zip_with_assets(project_data: Dict[str, Any]) -> bytes:
     """Create single-page export ZIP with bundled assets."""
     html_content = generate_full_html(project_data)
-    project_name = project_data.get("name", "hotel-website").lower().replace(" ", "-")
+    project_name = archive_folder(project_data.get('name', 'hotel-website'))
 
     bundled_html, assets = await bundle_assets_in_html(html_content)
 
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr(f"{project_name}/index.html", bundled_html)
+        write_site_metadata(zf, project_name, {'index.html': bundled_html}, project_data.get('site_base_url', ''))
         for asset_path, asset_data in assets.items():
             zf.writestr(f"{project_name}/{asset_path}", asset_data)
         readme = f"""# {project_data.get('name', 'Hotel Website')}\n\n## Setup\n1. Upload this folder to your web server\n2. Open index.html\n\n## Assets\nImages bundled in assets/ folder.\n\n---\nPowered by Syroce"""
@@ -1319,10 +1419,11 @@ async def create_export_zip_with_assets(project_data: Dict[str, Any]) -> bytes:
 
 def create_export_zip(project_data: Dict[str, Any]) -> bytes:
     html_content = generate_full_html(project_data)
-    project_name = project_data.get("name", "hotel-website").lower().replace(" ", "-")
+    project_name = archive_folder(project_data.get('name', 'hotel-website'))
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr(f"{project_name}/index.html", html_content)
+        zf.writestr(f"{project_name}/index.html", bundle_local_images(html_content, zf, project_name))
+        write_site_metadata(zf, project_name, {'index.html': html_content}, project_data.get('site_base_url', ''))
         readme = f"""# {project_data.get('name', 'Hotel Website')}
 
 ## Setup
@@ -1342,3 +1443,34 @@ Powered by Syroce - https://syroce.com
         zf.writestr(f"{project_name}/README.md", readme)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def archive_folder(name):
+    return re.sub(r'[^a-zA-Z0-9_-]+', '-', str(name)).strip('-')[:80] or 'hotel-website'
+
+
+def bundle_local_images(source, archive, folder):
+    host = urlsplit(os.getenv('PUBLIC_BASE_URL', '')).netloc
+    for url in _extract_image_urls(source):
+        parsed = urlsplit(url)
+        if not parsed.path.startswith('/api/uploads/') or (parsed.netloc and parsed.netloc != host):
+            continue
+        name = parsed.path.removeprefix('/api/uploads/')
+        if Path(name).name != name or Path(name).suffix.lower() not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
+            raise ValueError('Invalid uploaded image')
+        path = UPLOADS_DIR / name
+        if not path.is_file() or path.stat().st_size > 5 * 1024 * 1024:
+            raise ValueError('Uploaded image is missing or too large')
+        asset = f'{folder}/assets/{name}'
+        if asset not in archive.namelist():
+            archive.writestr(asset, path.read_bytes())
+        source = source.replace(escape(url, quote=True), f'assets/{name}').replace(url, f'assets/{name}')
+    return source
+
+
+def write_site_metadata(archive, folder, pages, base):
+    from xml.sax.saxutils import escape as xml_escape
+    base = unescape(base)
+    urls = ''.join(f'<url><loc>{xml_escape(base + name)}</loc></url>' for name in pages if name.endswith('.html')) if base else ''
+    archive.writestr(f'{folder}/sitemap.xml', f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>')
+    archive.writestr(f'{folder}/robots.txt', f'User-agent: *\nAllow: /\nSitemap: {base}sitemap.xml\n' if base else 'User-agent: *\nDisallow: /\n')

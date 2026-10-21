@@ -37,6 +37,7 @@ class ProjectUpdate(BaseModel):
     analytics: Optional[Dict[str, Any]] = None  # {ga_id, custom_head_code}
     published: Optional[bool] = None
     bundle_assets: Optional[bool] = None
+    legal: Optional[Dict[str, str]] = None
 
 
 # ============ CLIENTS ============
@@ -144,6 +145,7 @@ class FormCreate(BaseModel):
 
 
 class FormUpdate(BaseModel):
+    project_id: Optional[str] = None
     name: Optional[str] = None
     fields: Optional[List[Dict[str, Any]]] = None
     form_type: Optional[str] = None

@@ -20,7 +20,7 @@ def create_crm_router(db, get_current_user, log_activity_fn, serialize_doc, seri
 
     async def require_role(authorization, roles):
         user = await require_auth(authorization)
-        if user.get("role", "admin") not in roles:
+        if user.get("role", "viewer") not in roles:
             raise HTTPException(403, "Bu islem icin yetkiniz yok")
         return user
 
@@ -373,23 +373,7 @@ def create_crm_router(db, get_current_user, log_activity_fn, serialize_doc, seri
         c = await db.campaigns.find_one({"id": campaign_id}, {"_id": 0})
         if not c:
             raise HTTPException(404, "Kampanya bulunamadi")
-        import random
-        # MOCK: simulate sending
-        lead_count = await db.leads.count_documents({})
-        mock_sent = random.randint(max(1, lead_count // 2), max(1, lead_count))
-        mock_stats = {
-            "sent": mock_sent,
-            "opened": random.randint(0, mock_sent),
-            "clicked": random.randint(0, mock_sent // 2) if mock_sent > 1 else 0,
-            "bounced": random.randint(0, max(1, mock_sent // 10)),
-        }
-        await db.campaigns.update_one(
-            {"id": campaign_id},
-            {"$set": {"status": "active", "stats": mock_stats, "updated_at": datetime.now(timezone.utc).isoformat()}}
-        )
-        await log_activity_fn("campaign_activated", f"'{c['name']}' kampanyasi aktif edildi (MOCK)", campaign_id, "campaign", user.get("id", ""))
-        updated = await db.campaigns.find_one({"id": campaign_id}, {"_id": 0})
-        return serialize_doc(updated)
+        raise HTTPException(409, 'E-posta gonderim saglayicisi yapilandirilmadi; kampanya gonderilmedi ve sayaclar degistirilmedi')
 
     @router.post("/campaigns/{campaign_id}/pause")
     async def pause_campaign(campaign_id: str, authorization: Optional[str] = Header(None)):

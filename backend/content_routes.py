@@ -3,6 +3,10 @@ from typing import Optional
 import uuid
 from datetime import datetime, timezone
 import re
+import hashlib
+import os
+from fastapi import Request
+from form_validation import validate_fields, validate_schema, CONTACT_FIELDS
 
 from models import FormCreate, FormUpdate, BlogPostCreate, BlogPostUpdate, DomainCreate
 
@@ -18,7 +22,7 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
 
     async def require_role(authorization, roles):
         user = await require_auth(authorization)
-        if user.get("role", "admin") not in roles:
+        if user.get("role", "viewer") not in roles:
             raise HTTPException(403, "Bu islem icin yetkiniz yok")
         return user
 
@@ -47,6 +51,7 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
     @router.post("/forms")
     async def create_form(data: FormCreate, authorization: Optional[str] = Header(None)):
         user = await require_role(authorization, ["admin", "editor"])
+        validate_schema(data.fields)
         now = datetime.now(timezone.utc).isoformat()
         form = {
             "id": str(uuid.uuid4()),
@@ -68,6 +73,8 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
     @router.put("/forms/{form_id}")
     async def update_form(form_id: str, data: FormUpdate, authorization: Optional[str] = Header(None)):
         user = await require_role(authorization, ["admin", "editor"])
+        if data.fields is not None:
+            validate_schema(data.fields)
         update_data = {k: v for k, v in data.model_dump().items() if v is not None}
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         result = await db.forms.update_one({"id": form_id}, {"$set": update_data})
@@ -92,20 +99,37 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
         return serialize_list(subs)
 
     @router.post("/forms/{form_id}/submit")
-    async def submit_form(form_id: str, data: dict):
+    async def submit_form(form_id: str, data: dict, request: Request):
         """Public endpoint - no auth needed for form submissions."""
         form = await db.forms.find_one({"id": form_id}, {"_id": 0})
         if not form:
             raise HTTPException(404, "Form bulunamadi")
         if form.get("status") != "active":
             raise HTTPException(400, "Bu form aktif degil")
+        if form.get('project_id'):
+            project = await db.projects.find_one({'id': form['project_id'], 'published': True})
+            if not project or not project.get('release'):
+                raise HTTPException(404, 'Form yayinda degil')
+            published_form = next((f for f in project['release']['snapshot'].get('public_forms', []) if f['id'] == form_id), None)
+            if not published_form:
+                raise HTTPException(404, 'Form yayindaki surumde bulunamadi')
+            # Validate the schema the visitor actually saw, not an unpublished edit.
+            form = published_form
         now = datetime.now(timezone.utc).isoformat()
-        fields_data = data.get("fields", data)
+        fields_data = validate_fields(form.get('fields', []), data.get('fields', data))
+        ip = request.client.host if request.client else 'unknown'
+        fingerprint = hashlib.sha256((os.environ.get('JWT_SECRET', '') + ip).encode()).hexdigest()
+        from datetime import timedelta
+        since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        if await db.form_submissions.count_documents({'form_id': form_id, 'fingerprint': fingerprint, 'created_at': {'$gte': since}}) >= 30:
+            raise HTTPException(429, 'Cok fazla gonderim; daha sonra tekrar deneyin')
         submission = {
             "id": str(uuid.uuid4()),
             "form_id": form_id,
             "data": fields_data,
             "created_at": now,
+            "project_id": form.get('project_id', ''),
+            "fingerprint": fingerprint,
         }
         await db.form_submissions.insert_one(submission)
         await db.forms.update_one({"id": form_id}, {"$inc": {"submissions_count": 1}})
@@ -144,6 +168,24 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
                 await log_activity_fn("lead_from_form", f"'{lead['name']}' form gonderiminden otomatik olusturuldu", lead["id"], "lead", "system")
 
         return {"message": "Form basariyla gonderildi", "id": submission["id"]}
+
+    @router.post('/sites/{project_id}/contact')
+    async def contact_site(project_id: str, data: dict, request: Request):
+        project = await db.projects.find_one({'id': project_id, 'published': True}, {'_id': 0})
+        if not project or not project.get('release'):
+            raise HTTPException(404, 'Site yayinda degil')
+        fields_data = validate_fields(CONTACT_FIELDS, data.get('fields', data))
+        fingerprint = hashlib.sha256(((os.environ.get('JWT_SECRET') or '') + (request.client.host if request.client else 'unknown')).encode()).hexdigest()
+        from datetime import timedelta
+        since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        form_id = f'site-contact-{project_id}'
+        if await db.form_submissions.count_documents({'form_id': form_id, 'fingerprint': fingerprint, 'created_at': {'$gte': since}}) >= 30:
+            raise HTTPException(429, 'Cok fazla gonderim; daha sonra tekrar deneyin')
+        now = datetime.now(timezone.utc).isoformat()
+        submission = {'id': str(uuid.uuid4()), 'form_id': form_id, 'project_id': project_id, 'data': fields_data, 'fingerprint': fingerprint, 'created_at': now}
+        await db.form_submissions.insert_one(submission)
+        await db.forms.update_one({'id': form_id}, {'$set': {'project_id': project_id, 'system_contact': True, 'name': f'{project["name"]} - Web iletisim', 'status': 'active', 'form_type': 'contact', 'fields': CONTACT_FIELDS, 'updated_at': now}, '$inc': {'submissions_count': 1}}, upsert=True)
+        return {'id': submission['id'], 'message': 'Talebiniz kaydedildi'}
 
     # ==================== BLOG ====================
 
@@ -246,17 +288,21 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
     @router.post("/domains")
     async def create_domain(data: DomainCreate, authorization: Optional[str] = Header(None)):
         user = await require_role(authorization, ["admin"])
+        hostname = data.domain.strip().lower().rstrip('.')
+        try:
+            hostname = hostname.encode('idna').decode('ascii')
+        except UnicodeError:
+            raise HTTPException(422, 'Alan adi gecersiz')
+        if not re.fullmatch(r'(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}', hostname):
+            raise HTTPException(422, 'Protokol, yol veya port icermeyen alan adi girin')
         now = datetime.now(timezone.utc).isoformat()
         domain = {
             "id": str(uuid.uuid4()),
             "project_id": data.project_id,
-            "domain": data.domain.strip().lower(),
-            "status": "pending",
-            "ssl_status": "pending",
-            "dns_records": [
-                {"type": "CNAME", "name": "www", "value": "hosting.syroce.com", "status": "pending"},
-                {"type": "A", "name": "@", "value": "185.199.108.153", "status": "pending"},
-            ],
+            "domain": hostname,
+            "status": "configuration_required",
+            "ssl_status": "not_configured",
+            "dns_records": [],
             "created_by": user.get("id", ""),
             "created_at": now,
         }
@@ -278,22 +324,9 @@ def create_content_router(db, get_current_user, log_activity_fn, serialize_doc, 
         domain = await db.domains.find_one({"id": domain_id}, {"_id": 0})
         if not domain:
             raise HTTPException(404, "Domain bulunamadi")
-        import random
-        # MOCK verification
-        verified = random.choice([True, True, True, False])  # 75% success
-        new_status = "verified" if verified else "failed"
-        ssl_status = "active" if verified else "pending"
-        dns_records = domain.get("dns_records", [])
-        for r in dns_records:
-            r["status"] = "verified" if verified else "pending"
-
-        await db.domains.update_one(
-            {"id": domain_id},
-            {"$set": {"status": new_status, "ssl_status": ssl_status, "dns_records": dns_records}}
-        )
-        updated = await db.domains.find_one({"id": domain_id}, {"_id": 0})
-        if verified:
-            await log_activity_fn("domain_verified", f"'{domain['domain']}' dogrulandi", domain_id, "domain", user.get("id", ""))
-        return serialize_doc(updated)
+        # Domain attachment/certificate provisioning needs a real hosting adapter.
+        # A database flag can never establish DNS ownership or install TLS.
+        await db.domains.update_one({'id': domain_id}, {'$set': {'status': 'configuration_required', 'ssl_status': 'not_configured'}})
+        raise HTTPException(409, 'Otomatik domain/SSL saglayicisi yapilandirilmadi. Siteyi once paylasilan yayin adresinde yayinlayin; ozel domain icin hosting ve DNS kurulumu gerekli.')
 
     return router

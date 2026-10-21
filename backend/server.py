@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, UploadFile, File, Depends, Header
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -7,12 +7,15 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import copy
+import io
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 import uuid
 from datetime import datetime, timezone, timedelta
+from PIL import Image, UnidentifiedImageError
 
-from passlib.context import CryptContext
+import bcrypt
 import jwt as pyjwt
 
 from models import (
@@ -35,22 +38,36 @@ mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
 client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=3000)
 db = client[os.environ.get('DB_NAME', 'syroce_crm')]
 
-app = FastAPI(title="Syroce CRM API")
+@asynccontextmanager
+async def lifespan(application):
+    await startup_event()
+    try:
+        yield
+    finally:
+        await shutdown_db_client()
+
+app = FastAPI(title="Syroce CRM API", lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # ==================== AUTH CONFIG ====================
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-JWT_SECRET = os.environ.get("JWT_SECRET", "syroce-crm-secret-key-2025-secure")
+JWT_SECRET = os.environ.get("JWT_SECRET", "")
+if len(JWT_SECRET) < 32:
+    raise RuntimeError("JWT_SECRET must be configured with at least 32 characters")
 JWT_ALGORITHM = "HS256"
 
 def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
+    try:
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
+    except (ValueError, TypeError):
+        return False
 
 def get_password_hash(password):
-    return pwd_context.hash(password)
+    if len(password) < 12 or len(password.encode()) > 72:
+        raise HTTPException(422, 'Sifre en az 12 karakter ve en fazla 72 bayt olmali')
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def create_access_token(data: dict, expires_days=7):
     to_encode = data.copy()
@@ -73,10 +90,37 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
         payload = decode_token(token)
         if payload:
             user = await db.users.find_one({"id": payload.get("user_id")}, {"_id": 0})
-            return user
+            if user and user.get('status', 'active') == 'active':
+                return user
     except Exception:
         pass
     return None
+
+
+@app.middleware('http')
+async def protect_management_api(request, call_next):
+    try:
+        length = int(request.headers.get('content-length', '0') or '0')
+    except ValueError:
+        return JSONResponse({'detail': 'Content-Length gecersiz'}, status_code=400)
+    if length > 6 * 1024 * 1024:
+        return JSONResponse({'detail': 'Istek govdesi cok buyuk'}, status_code=413)
+    path = request.url.path
+    public = path in {'/api/auth/login', '/api/auth/register', '/api/auth/check'}
+    public = public or (request.method == 'GET' and (path.startswith('/api/hosted/') or path.startswith('/api/uploads/')))
+    public = public or (request.method == 'POST' and bool(regex_module.fullmatch(r'/api/(forms/[^/]+/submit|sites/[^/]+/contact)', path)))
+    if path.startswith('/api/') and not public and request.method != 'OPTIONS':
+        user = await get_current_user(request.headers.get('authorization'))
+        if not user:
+            return JSONResponse({'detail': 'Oturum gecersiz'}, status_code=401)
+        role = user.get('role', 'viewer')
+        self_service = path in {'/api/auth/profile', '/api/auth/change-password', '/api/notifications/read-all'} or bool(regex_module.fullmatch(r'/api/notifications/[^/]+/read', path))
+        preview = request.method == 'POST' and path == '/api/preview'
+        if request.method not in {'GET', 'HEAD'} and not self_service and not preview:
+            if role not in {'admin', 'editor'} or (request.method == 'DELETE' and role != 'admin'):
+                return JSONResponse({'detail': 'Bu islem icin yetkiniz yok'}, status_code=403)
+        request.state.user = user
+    return await call_next(request)
 
 # ==================== UPLOADS ====================
 UPLOAD_DIR = ROOT_DIR / "uploads"
@@ -125,6 +169,10 @@ async def create_notification(user_id: str, title: str, message: str, notif_type
 
 @api_router.post("/auth/register")
 async def register(data: RegisterRequest):
+    if await db.users.count_documents({}) > 0:
+        raise HTTPException(403, 'Yeni kullanicilar yalniz yonetici davetiyle eklenebilir')
+    if len(data.password) < 12:
+        raise HTTPException(422, 'Sifre en az 12 karakter olmali')
     existing = await db.users.find_one({"email": data.email})
     if existing:
         raise HTTPException(400, "Bu e-posta zaten kayitli")
@@ -140,14 +188,23 @@ async def register(data: RegisterRequest):
         "status": "active",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
-    await db.users.insert_one(user)
+    from pymongo.errors import DuplicateKeyError
+    try:
+        await db.setup_locks.insert_one({'_id': 'initial-admin'})
+    except DuplicateKeyError:
+        raise HTTPException(409, 'Ilk yonetici kurulumu baska bir istek tarafindan baslatildi')
+    try:
+        await db.users.insert_one(user)
+    except Exception:
+        await db.setup_locks.delete_one({'_id': 'initial-admin'})
+        raise
     token = create_access_token({"user_id": user["id"], "email": user["email"], "role": role})
     return {"token": token, "user": {"id": user["id"], "email": user["email"], "name": user["name"], "role": role}}
 
 @api_router.post("/auth/login")
 async def login(data: LoginRequest):
     user = await db.users.find_one({"email": data.email}, {"_id": 0})
-    if not user or not verify_password(data.password, user["password_hash"]):
+    if not user or user.get('status', 'active') != 'active' or not verify_password(data.password, user["password_hash"]):
         raise HTTPException(401, "Gecersiz e-posta veya sifre")
     role = user.get("role", "admin")
     token = create_access_token({"user_id": user["id"], "email": user["email"], "role": role})
@@ -196,8 +253,8 @@ async def change_password(data: PasswordChange, authorization: Optional[str] = H
     if not verify_password(data.current_password, user["password_hash"]):
         raise HTTPException(400, "Mevcut sifre hatali")
     # Password validation
-    if len(data.new_password) < 6:
-        raise HTTPException(400, "Yeni sifre en az 6 karakter olmali")
+    if len(data.new_password) < 12:
+        raise HTTPException(400, "Yeni sifre en az 12 karakter olmali")
     new_hash = get_password_hash(data.new_password)
     await db.users.update_one({"id": user["id"]}, {"$set": {"password_hash": new_hash}})
     await log_activity("password_changed", "Sifre degistirildi", user["id"], "user", user["id"])
@@ -247,13 +304,21 @@ async def mark_all_notifications_read(authorization: Optional[str] = Header(None
 
 @api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
-    allowed = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"]
+    allowed = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
     ext = Path(file.filename).suffix.lower() if file.filename else ""
     if ext not in allowed:
         raise HTTPException(400, f"Desteklenmeyen dosya formati. Izin verilen: {', '.join(allowed)}")
-    content = await file.read()
+    content = await file.read(5 * 1024 * 1024 + 1)
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(400, "Dosya boyutu 5MB'yi asamaz")
+    try:
+        with Image.open(io.BytesIO(content)) as image:
+            if image.format not in {'JPEG', 'PNG', 'GIF', 'WEBP'} or image.width * image.height > 40_000_000:
+                raise ValueError('Unsupported image')
+            ext = {'JPEG': '.jpg', 'PNG': '.png', 'GIF': '.gif', 'WEBP': '.webp'}[image.format]
+            image.verify()
+    except (UnidentifiedImageError, ValueError, OSError, Image.DecompressionBombError):
+        raise HTTPException(422, 'Gecerli bir raster gorsel yukleyin; SVG ve HTML kabul edilmez')
     filename = f"{uuid.uuid4()}{ext}"
     filepath = UPLOAD_DIR / filename
     with open(filepath, "wb") as f:
@@ -411,6 +476,10 @@ async def create_project(data: ProjectCreate):
 @api_router.put("/projects/{project_id}")
 async def update_project(project_id: str, data: ProjectUpdate):
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if 'published' in update_data or update_data.get('status') == 'published':
+        raise HTTPException(422, 'Yayin durumunu degistirmek icin Yayinla islemini kullanin')
+    if update_data.get('status') == 'draft':
+        update_data['published'] = False
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data.pop("id", None)
     result = await db.projects.update_one({"id": project_id}, {"$set": update_data})
@@ -432,6 +501,8 @@ async def preview_project(project_id: str):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Proje bulunamadi")
+    from publication import enrich_public_content
+    project = await enrich_public_content(project, db)
     html = generate_full_html(project)
     return Response(content=html, media_type="text/html")
 
@@ -440,19 +511,29 @@ async def export_project(project_id: str):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Proje bulunamadi")
+    from publication import public_base
+    if public_base():
+        project['public_contact_url'] = f'{public_base()}/api/sites/{project_id}/contact'
+        project['site_base_url'] = f'{public_base()}/api/hosted/{project_id}/'
+    from publication import enrich_public_content
+    project = await enrich_public_content(project, db)
     export_mode = project.get("export_mode", "single")
     bundle = project.get("bundle_assets", False)
-    if bundle:
-        if export_mode == "multi":
-            zip_bytes = await create_multipage_export_zip_with_assets(project)
+    try:
+        if bundle:
+            if export_mode == "multi":
+                zip_bytes = await create_multipage_export_zip_with_assets(project)
+            else:
+                zip_bytes = await create_export_zip_with_assets(project)
         else:
-            zip_bytes = await create_export_zip_with_assets(project)
-    else:
-        if export_mode == "multi":
-            zip_bytes = create_multipage_export_zip(project)
-        else:
-            zip_bytes = create_export_zip(project)
-    filename = project.get("name", "hotel-website").lower().replace(" ", "-")
+            if export_mode == "multi":
+                zip_bytes = create_multipage_export_zip(project)
+            else:
+                zip_bytes = create_export_zip(project)
+    except ValueError as exc:
+        raise HTTPException(422, {'message': 'Gorseller paketlenemedi', 'issues': [str(exc)]})
+    from export_service import archive_folder
+    filename = archive_folder(project.get('name', 'hotel-website'))
     await log_activity("project_exported", f"'{project['name']}' projesi disari aktarildi ({export_mode})", project_id, "project")
     return Response(
         content=zip_bytes,
@@ -462,6 +543,9 @@ async def export_project(project_id: str):
 
 @api_router.post("/preview")
 async def preview_html(data: dict):
+    if data.get('id'):
+        from publication import enrich_public_content
+        data = await enrich_public_content(data, db)
     html = generate_full_html(data)
     return Response(content=html, media_type="text/html")
 
@@ -472,12 +556,39 @@ async def publish_project(project_id: str):
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(404, "Proje bulunamadi")
-    await db.projects.update_one(
-        {"id": project_id},
-        {"$set": {"published": True, "status": "published", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    from publication import validate_publication, make_release
+    issues = validate_publication(project)
+    if issues:
+        raise HTTPException(422, {'message': 'Yayin kontrolleri basarisiz', 'issues': issues})
+    release = await make_release(project, db)
+    from bson import BSON
+    if len(BSON.encode(release)) > 8 * 1024 * 1024:
+        raise HTTPException(422, 'Yayin icerigi cok buyuk; gorselleri dosya olarak yukleyin ve metinleri kisaltin')
+    await db.project_releases.insert_one({**release, 'project_id': project_id})
+    result = await db.projects.update_one(
+        {"id": project_id, "updated_at": project.get('updated_at')},
+        {"$set": {"published": True, "status": "published", "release": release, "updated_at": datetime.now(timezone.utc).isoformat()}}
     )
+    if not result.matched_count:
+        raise HTTPException(409, 'Proje yayin hazirlanirken degisti; yeniden kaydedip yayinlayin')
     await log_activity("project_published", f"'{project['name']}' yayinlandi", project_id, "project")
-    return {"published": True, "live_url": f"/api/hosted/{project_id}"}
+    return {"published": True, "release_id": release['id'], "live_url": f"/api/hosted/{project_id}/index.html"}
+
+
+@api_router.get('/projects/{project_id}/releases')
+async def list_releases(project_id: str):
+    return serialize_list(await db.project_releases.find({'project_id': project_id}, {'_id': 0, 'pages': 0, 'snapshot': 0}).sort('created_at', -1).to_list(20))
+
+
+@api_router.post('/projects/{project_id}/releases/{release_id}/restore')
+async def restore_release(project_id: str, release_id: str):
+    release = await db.project_releases.find_one({'id': release_id, 'project_id': project_id}, {'_id': 0})
+    if not release:
+        raise HTTPException(404, 'Yayin surumu bulunamadi')
+    result = await db.projects.update_one({'id': project_id}, {'$set': {'published': True, 'status': 'published', 'release': release, 'updated_at': datetime.now(timezone.utc).isoformat()}})
+    if not result.matched_count:
+        raise HTTPException(404, 'Proje bulunamadi')
+    return {'published': True, 'release_id': release_id}
 
 @api_router.post("/projects/{project_id}/unpublish")
 async def unpublish_project(project_id: str):
@@ -492,15 +603,26 @@ async def unpublish_project(project_id: str):
     return {"published": False}
 
 @api_router.get("/hosted/{project_id}")
-async def hosted_project(project_id: str):
+async def hosted_index(project_id: str):
+    return RedirectResponse(f'/api/hosted/{project_id}/index.html', status_code=307)
+
+
+@api_router.get("/hosted/{project_id}/{page_name}")
+async def hosted_project(project_id: str, page_name: str = 'index.html'):
     """Serve published project as live website."""
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(404, "Proje bulunamadi")
     if not project.get("published", False):
         raise HTTPException(403, "Bu proje henuz yayinlanmamis")
-    html = generate_full_html(project)
-    return Response(content=html, media_type="text/html")
+    release = project.get('release')
+    if not release:
+        raise HTTPException(409, 'Bu eski yayin icin Yayinla islemini yeniden calistirin')
+    content = release.get('pages', {}).get(page_name)
+    if content is None:
+        raise HTTPException(404, 'Sayfa bulunamadi')
+    media = 'application/xml' if page_name.endswith('.xml') else 'text/plain' if page_name == 'robots.txt' else 'text/html'
+    return Response(content=content, media_type=media, headers={'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin'})
 
 # ==================== LANGUAGES ====================
 
@@ -537,11 +659,12 @@ async def create_version(project_id: str):
         raise HTTPException(404, "Proje bulunamadi")
     # Count existing versions
     count = await db.versions.count_documents({"project_id": project_id})
+    latest = await db.versions.find_one({'project_id': project_id}, sort=[('version_number', -1)])
     version = {
         "id": str(uuid.uuid4()),
         "project_id": project_id,
-        "version_number": count + 1,
-        "label": f"v{count + 1}",
+        "version_number": (latest or {}).get('version_number', 0) + 1,
+        "label": f"v{(latest or {}).get('version_number', 0) + 1}",
         "theme": copy.deepcopy(project.get("theme", {})),
         "sections": copy.deepcopy(project.get("sections", [])),
         "seo": copy.deepcopy(project.get("seo", {})),
@@ -741,7 +864,6 @@ async def seed_templates():
         await db.templates.insert_many(builtin)
     return {"message": f"{len(builtin)} sablon yuklendi", "count": len(builtin)}
 
-@app.on_event("startup")
 async def startup_event():
     # Create MongoDB indexes for performance
     try:
@@ -825,7 +947,7 @@ app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
     allow_methods=["*"],
     allow_headers=["*"],
@@ -848,11 +970,10 @@ if FRONTEND_BUILD_DIR.exists():
         if full_path.startswith("api/"):
             raise HTTPException(status_code=404, detail="Not Found")
         candidate = FRONTEND_BUILD_DIR / full_path
-        if full_path and candidate.is_file():
+        if full_path and candidate.resolve().is_relative_to(FRONTEND_BUILD_DIR.resolve()) and candidate.is_file():
             return FileResponse(str(candidate))
         return FileResponse(str(FRONTEND_BUILD_DIR / "index.html"))
 
 
-@app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

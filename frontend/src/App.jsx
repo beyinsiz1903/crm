@@ -41,7 +41,7 @@ function AuthWrapper({ children }) {
           setAuthState(has_users ? "needs_login" : "needs_setup");
         }
       } catch {
-        if (mounted) setAuthState("authenticated"); // If auth check fails, allow access
+        if (mounted) setAuthState("error");
       }
     };
     init();
@@ -64,6 +64,8 @@ function AuthWrapper({ children }) {
   if (authState === "needs_setup" || authState === "needs_login") {
     return <Login mode={authState === "needs_setup" ? "register" : "login"} onSuccess={() => setAuthState("authenticated")} />;
   }
+
+  if (authState === 'error') return <div role="alert" className="p-8">Sunucuya ulaşılamadı. Yönetim erişimi doğrulanamadı. <button onClick={() => window.location.reload()}>Tekrar dene</button></div>;
 
   return children;
 }

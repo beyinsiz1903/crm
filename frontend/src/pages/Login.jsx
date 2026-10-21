@@ -112,7 +112,7 @@ export default function Login({ mode: initialMode, onSuccess }) {
                 <ArrowRight size={16} className="ml-2" />
               </Button>
             </form>
-            {mode === "login" && (
+            {mode === "login" && initialMode === "register" && (
               <p className="text-xs text-center text-muted-foreground mt-4">
                 Hesabiniz yok mu?{" "}
                 <button onClick={() => setMode("register")} className="text-primary hover:underline">
@@ -120,6 +120,7 @@ export default function Login({ mode: initialMode, onSuccess }) {
                 </button>
               </p>
             )}
+            {mode === "login" && initialMode !== "register" && <p className="text-xs text-center text-muted-foreground mt-4">Yeni hesap icin yoneticinizle iletisime gecin.</p>}
             {mode === "register" && (
               <p className="text-xs text-center text-muted-foreground mt-4">
                 Zaten hesabiniz var mi?{" "}
